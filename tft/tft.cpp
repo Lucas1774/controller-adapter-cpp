@@ -9,7 +9,8 @@
 #include <windows.h>
 
 namespace tft {
-const std::vector<std::pair<int, int>> MOVE_COORDINATES = {{483, 656}, {473, 438}, {542, 175}, {927, 180}, {1286, 198}, {1418, 476}, {1447, 671}, {956, 679}};
+const std::vector<std::pair<int, int>> MOVE_COORDINATES = {
+    {483, 656}, {473, 438}, {542, 175}, {927, 180}, {1286, 198}, {1418, 476}, {1447, 671}, {956, 679}};
 
 const std::vector<std::vector<std::pair<int, int>>> BOARD_COORDINATES = {
     {{427, 756}, {544, 751}, {659, 757}, {776, 754}, {895, 756}, {1011, 754}, {1125, 754}, {1246, 752}, {1356, 752}},
@@ -19,7 +20,7 @@ const std::vector<std::vector<std::pair<int, int>>> BOARD_COORDINATES = {
     {{567, 423}, {680, 426}, {794, 427}, {904, 427}, {1023, 429}, {1133, 422}, {1246, 420}}};
 
 const std::vector<std::pair<int, int>> ITEM_COORDINATES = {
-    {295, 762}, {335, 728}, {309, 692}, {350, 667}, {409, 665}, {326, 637}, {384, 636}, {448, 635}, {347, 594}, {403, 594}};
+    {32, 298}, {29, 349}, {29, 399}, {28, 452}, {30, 502}, {31, 549}, {30, 601}, {30, 654}, {29, 706}, {30, 754}};
 
 const std::vector<std::pair<int, int>> SHOP_COORDINATES = {
     {503, 982}, {714, 982}, {923, 985}, {1151, 984}, {1348, 987}};
@@ -28,28 +29,12 @@ const std::vector<std::vector<std::pair<int, int>>> CARD_COORDINATES = {
     {{553, 580}, {963, 580}, {1380, 583}},
     {{552, 865}, {959, 866}, {1365, 865}}};
 
-const std::vector<std::pair<int, int>> LOCK_COORDINATES = {{1450, 905}, {28, 350}, {33, 436}, {34, 528}, {356, 473}, {344, 538}, {349, 636}};
+const std::vector<std::pair<int, int>> LOCK_COORDINATES = {{1450, 905}, {1323, 948}, {1327, 1027}};
 
-constexpr int BOARD_ADJACENCY_MATRIX[10][10] = {
-    {NONE, PAD_UP, NONE, NONE, NONE, NONE, NONE, NONE, PAD_DOWN, NONE},          // 0
-    {PAD_DOWN, NONE, PAD_UP, NONE, NONE, NONE, NONE, NONE, NONE, NONE},          // 1
-    {NONE, PAD_DOWN, NONE, PAD_UP, NONE, NONE, NONE, NONE, NONE, NONE},          // 2
-    {NONE, NONE, PAD_DOWN, NONE, PAD_RIGHT, PAD_UP, NONE, NONE, NONE, NONE},     // 3
-    {NONE, NONE, PAD_DOWN, PAD_LEFT, NONE, NONE, PAD_UP, NONE, NONE, NONE},      // 4
-    {NONE, NONE, NONE, PAD_DOWN, NONE, NONE, PAD_RIGHT, PAD_LEFT, PAD_UP, NONE}, // 5
-    {NONE, NONE, NONE, NONE, PAD_DOWN, PAD_LEFT, NONE, PAD_RIGHT, NONE, PAD_UP}, // 6
-    {NONE, NONE, NONE, NONE, PAD_DOWN, PAD_RIGHT, PAD_LEFT, NONE, NONE, PAD_UP}, // 7
-    {PAD_UP, NONE, NONE, NONE, NONE, PAD_DOWN, NONE, NONE, NONE, PAD_RIGHT},     // 8
-    {PAD_UP, NONE, NONE, NONE, NONE, NONE, PAD_DOWN, NONE, PAD_LEFT, NONE}};     // 9
-
-constexpr int LOCK_ADJACENCY_MATRIX[7][7] = {
-    {NONE, PAD_UP, PAD_RIGHT, PAD_LEFT, NONE, NONE, NONE},     // 0
-    {PAD_LEFT, NONE, PAD_DOWN, PAD_UP, PAD_RIGHT, NONE, NONE}, // 1
-    {PAD_LEFT, PAD_UP, NONE, PAD_DOWN, NONE, PAD_RIGHT, NONE}, // 2
-    {PAD_LEFT, PAD_DOWN, PAD_UP, NONE, NONE, NONE, PAD_RIGHT}, // 3
-    {PAD_RIGHT, PAD_LEFT, NONE, NONE, NONE, PAD_DOWN, PAD_UP}, // 4
-    {PAD_RIGHT, NONE, PAD_LEFT, NONE, PAD_UP, NONE, PAD_DOWN}, // 5
-    {PAD_RIGHT, NONE, NONE, PAD_LEFT, PAD_DOWN, PAD_UP, NONE}, // 6
+constexpr int LOCK_ADJACENCY_MATRIX[3][3] = {
+    {NONE, PAD_DOWN, PAD_UP}, // lock
+    {PAD_UP, NONE, PAD_DOWN}, // 1
+    {PAD_DOWN, PAD_UP, NONE}, // 2
 };
 
 void run(std::unordered_map<int, int> &buttonState,
@@ -345,11 +330,10 @@ bool updateAbstractState(const int button, State &state, BufferState &bufferStat
         }
         coordinates = BOARD_COORDINATES[state.boardRow][state.boardColumn];
     } else if (state.mode == ITEMS) {
-        for (int i = 0; i < 10; i++) {
-            if (BOARD_ADJACENCY_MATRIX[state.itemIndex][i] == button) {
-                state.itemIndex = i;
-                break;
-            }
+        if (button == PAD_UP) {
+            state.itemIndex = (state.itemIndex + 9) % 10;
+        } else if (button == PAD_DOWN) {
+            state.itemIndex = (state.itemIndex + 1) % 10;
         }
         coordinates = ITEM_COORDINATES[state.itemIndex];
     } else if (state.mode == SHOP) {
