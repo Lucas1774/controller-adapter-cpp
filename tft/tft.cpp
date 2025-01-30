@@ -77,8 +77,6 @@ void run(std::unordered_map<int, int> &buttonState,
     bool running = config["run_automatically"].asBool();
 
     Functions functions;
-    const int center_x = screenWidth / 2;
-    const int center_y = screenHeight / 2;
     const float res_scaling_x = static_cast<float>(screenWidth) / 1920;
     const float res_scaling_y = static_cast<float>(screenHeight) / 1080;
     const auto now = std::chrono::steady_clock::now();
@@ -118,10 +116,10 @@ void run(std::unordered_map<int, int> &buttonState,
         {L1, &state.mouse_target},
     };
     const auto INPUT_TO_LOGIC_BEFORE = std::unordered_map<int, std::function<bool()>>{
-        {PAD_LEFT, [&]() { return updateAbstractState(PAD_LEFT, buttonState[PAD_LEFT], state, buffer_state, res_scaling_x, res_scaling_y, functions); }},
-        {PAD_RIGHT, [&]() { return updateAbstractState(PAD_RIGHT, buttonState[PAD_RIGHT], state, buffer_state, res_scaling_x, res_scaling_y, functions); }},
-        {PAD_UP, [&]() { return updateAbstractState(PAD_UP, buttonState[PAD_UP], state, buffer_state, res_scaling_x, res_scaling_y, functions); }},
-        {PAD_DOWN, [&]() { return updateAbstractState(PAD_DOWN, buttonState[PAD_DOWN], state, buffer_state, res_scaling_x, res_scaling_y, functions); }}};
+        {PAD_LEFT, [&]() { return updateAbstractState(PAD_LEFT, state, buffer_state, res_scaling_x, res_scaling_y, functions); }},
+        {PAD_RIGHT, [&]() { return updateAbstractState(PAD_RIGHT, state, buffer_state, res_scaling_x, res_scaling_y, functions); }},
+        {PAD_UP, [&]() { return updateAbstractState(PAD_UP, state, buffer_state, res_scaling_x, res_scaling_y, functions); }},
+        {PAD_DOWN, [&]() { return updateAbstractState(PAD_DOWN, state, buffer_state, res_scaling_x, res_scaling_y, functions); }}};
 
     functions.setMaps(&buttonState, &INPUT_TO_MOUSE_MOVE, &RELEASE_TO_MOUSE_MOVE, &INPUT_TO_MOUSE_CLICK, nullptr, nullptr, nullptr, &INPUT_TO_KEY_TAP, nullptr, nullptr, &INPUT_TO_LOGIC_BEFORE, nullptr, nullptr, nullptr);
 
@@ -307,8 +305,8 @@ void run(std::unordered_map<int, int> &buttonState,
     }
 }
 
-bool updateAbstractState(const int button, const int &buttonState, State &state, BufferState &bufferState, const float res_scaling_x, const float res_scaling_y, const Functions &functions) {
-    if (!functions.isBufferFree(200, 50, buttonState, bufferState)) {
+bool updateAbstractState(const int button, State &state, BufferState &bufferState, const float res_scaling_x, const float res_scaling_y, const Functions &functions) {
+    if (!functions.isBufferFree(200, 50, button, bufferState)) {
         return false;
     }
 

@@ -95,9 +95,9 @@ void run(std::unordered_map<int, int> &buttonState,
         while (true) {
             auto loopStartTime = std::chrono::steady_clock::now();
             std::vector<SDL_Event> events;
-            SDL_Event event;
-            while (SDL_PollEvent(&event)) {
-                events.push_back(event);
+            SDL_Event eventBuffer;
+            while (SDL_PollEvent(&eventBuffer)) {
+                events.push_back(eventBuffer);
             }
             if (!running) {
                 for (const auto &event : events) {
@@ -200,8 +200,8 @@ void run(std::unordered_map<int, int> &buttonState,
                         }
                     } else {
                         functions.moveMouse(
-                            round((rightX * center_x * currentRadius) + (center_x)),
-                            round((rightY * center_y * currentRadius) + (center_y)));
+                            round(rightX * static_cast<float>(center_x) * currentRadius + center_x),
+                            round(rightY * static_cast<float>(center_y) * currentRadius + center_y));
                     }
                 }
             }

@@ -65,19 +65,19 @@ void Functions::moveMouseRelative(const int x, const int y) const {
     SetCursorPos(p.x + x, p.y + y);
 }
 
-void Functions::click(const int button_to_click, const std::function<void()> callback) const {
+void Functions::click(const int button_to_click, const std::function<void()> &callback) const {
     INPUT ip[2] = {0};
     ip[0].type = INPUT_MOUSE;
     ip[0].mi.dwFlags = this->BUTTON_ID_TO_PRESS_EVENT.at(button_to_click);
     ip[1].type = INPUT_MOUSE;
-    ip[1].mi.dwFlags = this->BUTOTN_ID_TO_RELEASE_EVENT.at(button_to_click);
+    ip[1].mi.dwFlags = this->BUTTON_ID_TO_RELEASE_EVENT.at(button_to_click);
     SendInput(2, ip, sizeof(INPUT));
     if (callback) {
         callback();
     }
 }
 
-void Functions::pressButton(const int button_to_press, const std::function<void()> callback) const {
+void Functions::pressButton(const int button_to_press, const std::function<void()> &callback) const {
     INPUT ip = {0};
     ip.type = INPUT_MOUSE;
     ip.mi.dwFlags = BUTTON_ID_TO_PRESS_EVENT.at(button_to_press);
@@ -87,17 +87,17 @@ void Functions::pressButton(const int button_to_press, const std::function<void(
     }
 }
 
-void Functions::releaseButton(const int button_to_release, const std::function<void()> callback) const {
+void Functions::releaseButton(const int button_to_release, const std::function<void()> &callback) const {
     INPUT ip = {0};
     ip.type = INPUT_MOUSE;
-    ip.mi.dwFlags = this->BUTOTN_ID_TO_RELEASE_EVENT.at(button_to_release);
+    ip.mi.dwFlags = this->BUTTON_ID_TO_RELEASE_EVENT.at(button_to_release);
     SendInput(1, &ip, sizeof(INPUT));
     if (callback) {
         callback();
     }
 }
 
-void Functions::pressThenRelease(const int key_to_tap, const std::function<void()> callback) const {
+void Functions::pressThenRelease(const int key_to_tap, const std::function<void()> &callback) const {
     this->sendInput(key_to_tap, KEYEVENTF_SCANCODE);
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
     this->sendInput(key_to_tap, KEYEVENTF_KEYUP);
@@ -195,7 +195,7 @@ void Functions::handleState(int &state, bool is_pressed) const {
     }
 }
 
-bool Functions::isBufferFree(const int second_input_delay_mills, const int subsequent_inputs_delay_millis, const int &buttonState, BufferState &bufferState) const {
+bool Functions::isBufferFree(const int second_input_delay_mills, const int subsequent_inputs_delay_millis, const int &button, BufferState &bufferState) const {
     auto now = std::chrono::steady_clock::now();
     if (now - bufferState.last_executed <= std::chrono::milliseconds(subsequent_inputs_delay_millis)) {
         return false;
@@ -203,8 +203,9 @@ bool Functions::isBufferFree(const int second_input_delay_mills, const int subse
         return false;
     } else {
         bufferState.last_executed = now;
-        bufferState.is_unleashed = (buttonState == PRESSED);
-        if (buttonState == JUST_PRESSED) {
+        const int state = buttonState->at(button);
+        bufferState.is_unleashed = (state == PRESSED);
+        if (state == JUST_PRESSED) {
             bufferState.last_pressed = now;
         }
         return true;

@@ -19,8 +19,7 @@ int main(int argc, char *argv[]) {
     std::string game = argv[1];
 
     Json::Value config;
-    std::ifstream configFile("config.json", std::ifstream::binary);
-    if (configFile.is_open()) {
+    if (std::ifstream configFile("config.json", std::ifstream::binary); configFile.is_open()) {
         configFile >> config;
         configFile.close();
     } else {

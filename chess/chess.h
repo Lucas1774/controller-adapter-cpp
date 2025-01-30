@@ -27,7 +27,7 @@ struct State {
     Mode mode;
     std::pair<int, int> mouse_target;
 };
-bool updateAbstractState(const int button, const int &buttonState, State &state, BufferState &BufferState, float res_scaling_x, const float res_scaling_y, const Functions &functions);
+bool updateAbstractState(const int button, State &state, BufferState &BufferState, float res_scaling_x, const float res_scaling_y, const Functions &functions);
 } // namespace chess
 
 #endif // CHESS_H

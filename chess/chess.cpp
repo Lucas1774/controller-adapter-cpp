@@ -49,7 +49,7 @@ void run(std::unordered_map<int, int> &buttonState,
     const float res_scaling_y = static_cast<float>(screenHeight) / 1080;
     const auto now = std::chrono::steady_clock::now();
 
-    State state = {
+    State programState = {
         .boardRow = 0,
         .boardColumn = 0,
         .resignIndex = 0,
@@ -64,10 +64,10 @@ void run(std::unordered_map<int, int> &buttonState,
     };
 
     const auto INPUT_TO_MOUSE_MOVE = std::unordered_map<int, std::pair<int, int> *>{
-        {PAD_LEFT, &state.mouse_target},
-        {PAD_RIGHT, &state.mouse_target},
-        {PAD_UP, &state.mouse_target},
-        {PAD_DOWN, &state.mouse_target}};
+        {PAD_LEFT, &programState.mouse_target},
+        {PAD_RIGHT, &programState.mouse_target},
+        {PAD_UP, &programState.mouse_target},
+        {PAD_DOWN, &programState.mouse_target}};
     const auto INPUT_TO_BUTTON_CLICK = std::unordered_map<int, int>{{B, SDL_BUTTON_RIGHT}, {R1, SDL_BUTTON_LEFT}, {L1, SDL_BUTTON_LEFT}, {Y, SDL_BUTTON_LEFT}, {X, SDL_BUTTON_LEFT}};
     const auto INPUT_TO_BUTTON_TOGGLE = std::unordered_map<int, int>{{A, SDL_BUTTON_LEFT}};
     const auto RELEASE_TO_BUTTON_TOGGLE = std::unordered_map<int, int>{{A, SDL_BUTTON_LEFT}};
@@ -76,17 +76,17 @@ void run(std::unordered_map<int, int> &buttonState,
         {R1, [&]() { functions.moveMouse(PLAY_AGAIN_POS.first * res_scaling_x, PLAY_AGAIN_POS.second * res_scaling_y); return true; }},
         {X, [&]() { functions.moveMouse(DRAW_POS.first * res_scaling_x, DRAW_POS.second * res_scaling_y); return true; }},
         {Y, [&]() { functions.moveMouse(RESIGN_POS.first * res_scaling_x, RESIGN_POS.second * res_scaling_y); return true; }},
-        {PAD_LEFT, [&]() { return updateAbstractState(PAD_LEFT, buttonState[PAD_LEFT], state, bufferState, res_scaling_x, res_scaling_y, functions); }},
-        {PAD_RIGHT, [&]() { return updateAbstractState(PAD_RIGHT, buttonState[PAD_RIGHT], state, bufferState, res_scaling_x, res_scaling_y, functions); }},
-        {PAD_UP, [&]() { return updateAbstractState(PAD_UP, buttonState[PAD_UP], state, bufferState, res_scaling_x, res_scaling_y, functions); }},
-        {PAD_DOWN, [&]() { return updateAbstractState(PAD_DOWN, buttonState[PAD_DOWN], state, bufferState, res_scaling_x, res_scaling_y, functions); }},
+        {PAD_LEFT, [&]() { return updateAbstractState(PAD_LEFT, programState, bufferState, res_scaling_x, res_scaling_y, functions); }},
+        {PAD_RIGHT, [&]() { return updateAbstractState(PAD_RIGHT, programState, bufferState, res_scaling_x, res_scaling_y, functions); }},
+        {PAD_UP, [&]() { return updateAbstractState(PAD_UP, programState, bufferState, res_scaling_x, res_scaling_y, functions); }},
+        {PAD_DOWN, [&]() { return updateAbstractState(PAD_DOWN, programState, bufferState, res_scaling_x, res_scaling_y, functions); }},
     };
     const auto INPUT_TO_LOGIC_AFTER = std::unordered_map<int, std::function<bool()>>{
-        {L1, [&]() { auto c = BOARD_COORDINATES[state.boardRow][state.boardColumn]; functions.moveMouse(c.first * res_scaling_x, c.second * res_scaling_y); return true; }},
-        {R1, [&]() { auto c = BOARD_COORDINATES[state.boardRow][state.boardColumn]; functions.moveMouse(c.first * res_scaling_x, c.second * res_scaling_y); return true; }},
-        {X, [&]() { state.mode = DRAW; auto c = DRAW_YES_NO[state.drawIndex]; functions.moveMouse(c.first * res_scaling_x, c.second * res_scaling_y); return true; }},
-        {Y, [&]() { state.mode = RESIGN; auto c = RESIGN_YES_NO[state.resignIndex]; functions.moveMouse(c.first * res_scaling_x, c.second * res_scaling_y); return true; }},
-        {A, [&]() { if (state.mode != BOARD) {state.mode = BOARD; state.drawIndex = 0; state.resignIndex = 0;} return true; }},
+        {L1, [&]() { auto c = BOARD_COORDINATES[programState.boardRow][programState.boardColumn]; functions.moveMouse(c.first * res_scaling_x, c.second * res_scaling_y); return true; }},
+        {R1, [&]() { auto c = BOARD_COORDINATES[programState.boardRow][programState.boardColumn]; functions.moveMouse(c.first * res_scaling_x, c.second * res_scaling_y); return true; }},
+        {X, [&]() { programState.mode = DRAW; auto c = DRAW_YES_NO[programState.drawIndex]; functions.moveMouse(c.first * res_scaling_x, c.second * res_scaling_y); return true; }},
+        {Y, [&]() { programState.mode = RESIGN; auto c = RESIGN_YES_NO[programState.resignIndex]; functions.moveMouse(c.first * res_scaling_x, c.second * res_scaling_y); return true; }},
+        {A, [&]() { if (programState.mode != BOARD) {programState.mode = BOARD; programState.drawIndex = 0; programState.resignIndex = 0;} return true; }},
     };
 
     functions.setMaps(&buttonState, &INPUT_TO_MOUSE_MOVE, nullptr, &INPUT_TO_BUTTON_CLICK, nullptr, &INPUT_TO_BUTTON_TOGGLE, &RELEASE_TO_BUTTON_TOGGLE, nullptr, nullptr, nullptr, &INPUT_TO_LOGIC_BEFORE, &INPUT_TO_LOGIC_AFTER, nullptr, nullptr);
@@ -95,9 +95,9 @@ void run(std::unordered_map<int, int> &buttonState,
         while (true) {
             auto loop_start_time = std::chrono::steady_clock::now();
             std::vector<SDL_Event> events;
-            SDL_Event event;
-            while (SDL_PollEvent(&event)) {
-                events.push_back(event);
+            SDL_Event eventBuffer;
+            while (SDL_PollEvent(&eventBuffer)) {
+                events.push_back(eventBuffer);
             }
             if (!running) {
                 for (const auto &event : events) {
@@ -111,8 +111,7 @@ void run(std::unordered_map<int, int> &buttonState,
                 }
             } else {
                 // state
-                for (auto &pair : buttonState) {
-                    int &state = pair.second;
+                for (auto &[button, state] : buttonState) {
                     if (state == JUST_PRESSED) {
                         state = PRESSED;
                     } else if (state == JUST_RELEASED) {
@@ -166,8 +165,8 @@ void run(std::unordered_map<int, int> &buttonState,
     }
 }
 
-bool updateAbstractState(const int button, const int &buttonState, State &state, BufferState &bufferState, const float res_scaling_x, const float res_scaling_y, const Functions &functions) {
-    if (!functions.isBufferFree(200, 50, buttonState, bufferState)) {
+bool updateAbstractState(const int button, State &state, BufferState &bufferState, const float res_scaling_x, const float res_scaling_y, const Functions &functions) {
+    if (!functions.isBufferFree(200, 50, button, bufferState)) {
         return false;
     }
 
