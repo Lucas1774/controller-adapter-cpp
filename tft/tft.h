@@ -26,7 +26,8 @@ enum MouseMovementWithPadMode {
 struct State {
     int boardRow;
     int boardColumn;
-    int itemIndex;
+    int itemColumn;
+    int itemRow;
     int shopIndex;
     int cardRow;
     int cardColumn;

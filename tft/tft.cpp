@@ -19,8 +19,9 @@ const std::vector<std::vector<std::pair<int, int>>> BOARD_COORDINATES = {
     {{611, 482}, {727, 487}, {845, 489}, {961, 485}, {1081, 484}, {1189, 485}, {1314, 489}},
     {{567, 423}, {680, 426}, {794, 427}, {904, 427}, {1023, 429}, {1133, 422}, {1246, 420}}};
 
-const std::vector<std::pair<int, int>> ITEM_COORDINATES = {
-    {32, 298}, {29, 349}, {29, 399}, {28, 452}, {30, 502}, {31, 549}, {30, 601}, {30, 654}, {29, 706}, {30, 754}};
+const std::vector<std::vector<std::pair<int, int>>> ITEM_COORDINATES = {
+    {{30, 298}, {30, 349}, {30, 399}, {30, 452}, {30, 502}, {30, 549}, {30, 601}, {30, 654}, {30, 706}, {30, 754}},
+    {{80, 298}, {80, 349}, {80, 399}, {80, 452}, {80, 502}, {80, 549}, {80, 601}, {80, 654}, {80, 706}, {80, 754}}};
 
 const std::vector<std::pair<int, int>> SHOP_COORDINATES = {
     {503, 982}, {714, 982}, {923, 985}, {1151, 984}, {1348, 987}};
@@ -69,7 +70,8 @@ void run(std::unordered_map<int, int> &buttonState,
     State state = {
         .boardRow = 2,
         .boardColumn = 3,
-        .itemIndex = 0,
+        .itemColumn = 0,
+        .itemRow = 0,
         .shopIndex = 2,
         .cardRow = 0,
         .cardColumn = 1,
@@ -85,7 +87,7 @@ void run(std::unordered_map<int, int> &buttonState,
 
     const auto TURBO_INPUTS = std::unordered_set<int>{PAD_LEFT, PAD_RIGHT, PAD_UP, PAD_DOWN};
     const auto INPUT_TO_KEY_TAP = std::unordered_map<int, WORD>{{B, 'E'}, {X, 'F'}, {Y, 'D'}, {R2, 'R'}, {L2, 'Q'}, {START, 'W'}};
-    const auto INPUT_TO_MOUSE_CLICK = std::unordered_map<int, int>{{A, SDL_BUTTON_LEFT}, {SELECT, SDL_BUTTON_RIGHT}};
+    const auto INPUT_TO_MOUSE_CLICK = std::unordered_map<int, int>{{SELECT, SDL_BUTTON_RIGHT}};
     const auto INPUT_TO_MOUSE_MOVE = std::unordered_map<int, std::pair<int, int> *>{
         {PAD_LEFT, &state.mouse_target},
         {PAD_RIGHT, &state.mouse_target},
@@ -187,7 +189,7 @@ void run(std::unordered_map<int, int> &buttonState,
                     // for item and board mode toggling, we remember positions to make it easier to build full items
                 } else if (buttonState[L1] == JUST_PRESSED) {
                     state.mode = ITEMS;
-                    auto coordinates = ITEM_COORDINATES[state.itemIndex];
+                    auto coordinates = ITEM_COORDINATES[state.itemColumn][state.itemRow];
                     state.mouse_target = {coordinates.first * res_scaling_x, coordinates.second * res_scaling_y};
                 } else if (buttonState[L1] == JUST_RELEASED) {
                     state.mode = BOARD;
@@ -262,6 +264,11 @@ void run(std::unordered_map<int, int> &buttonState,
                 for (const auto &[input, _] : INPUT_TO_MOUSE_CLICK) {
                     functions.handleToClick(input, JUST_PRESSED);
                 }
+                if (state.mode != ITEMS) {
+                    functions.handleToClick(A, SDL_BUTTON_LEFT, JUST_PRESSED);
+                } else {
+                    functions.handleToButtonToggle(A, SDL_BUTTON_LEFT, JUST_PRESSED);
+                }
 
                 if (isRightXActive || isRightYActive) {
                     if (std::chrono::steady_clock::now() - lastUpdateTime > std::chrono::milliseconds(100)) {
@@ -331,11 +338,13 @@ bool updateAbstractState(const int button, State &state, BufferState &bufferStat
         coordinates = BOARD_COORDINATES[state.boardRow][state.boardColumn];
     } else if (state.mode == ITEMS) {
         if (button == PAD_UP) {
-            state.itemIndex = (state.itemIndex + 9) % 10;
+            state.itemRow = (state.itemRow + 9) % 10;
         } else if (button == PAD_DOWN) {
-            state.itemIndex = (state.itemIndex + 1) % 10;
+            state.itemRow = (state.itemRow + 1) % 10;
+        } else {
+            state.itemColumn = (state.itemColumn + 1) % 2;
         }
-        coordinates = ITEM_COORDINATES[state.itemIndex];
+        coordinates = ITEM_COORDINATES[state.itemColumn][state.itemRow];
     } else if (state.mode == SHOP) {
         if (button == PAD_LEFT) {
             state.shopIndex = (state.shopIndex + 4) % 5;
