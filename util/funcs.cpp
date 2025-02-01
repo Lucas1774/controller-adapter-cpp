@@ -36,7 +36,7 @@ void Functions::setMaps(std::unordered_map<int, int> *buttonState,
 void Functions::sendInput(const int key, const DWORD flags) const {
     INPUT ip = {0};
     ip.type = INPUT_KEYBOARD;
-    ip.ki.wScan = MapVirtualKey(key, MAPVK_VK_TO_VSC);
+    ip.ki.wScan = static_cast<WORD>(MapVirtualKey(key, MAPVK_VK_TO_VSC));
     ip.ki.dwFlags = flags;
     SendInput(1, &ip, sizeof(INPUT));
 }

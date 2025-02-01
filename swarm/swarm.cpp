@@ -37,7 +37,7 @@ void run(std::unordered_map<int, int> &buttonState,
     }
     bool highPrecisionAlwaysOn = specificConfig["high_precision_on_by_default"].asBool();
     const float MAX_RADIUS_HIGH_PRECISION_OFF = specificConfig["default_radius"].asFloat();
-    float currentRadius = MAX_RADIUS_HIGH_PRECISION_OFF;
+    double currentRadius = MAX_RADIUS_HIGH_PRECISION_OFF;
 
     Functions functions;
     const int center_x = screenWidth / 2;
@@ -131,14 +131,14 @@ void run(std::unordered_map<int, int> &buttonState,
                     if (highPrecisionAlwaysOn || highPrecision) {
                         if (std::chrono::steady_clock::now() - lastUpdateTime > std::chrono::milliseconds(100)) {
                             functions.moveMouseRelative(
-                                round(rightJoystick.x * rightJoystick.sensitivity * 500),
-                                round(rightJoystick.y * rightJoystick.sensitivity * 500));
+                                static_cast<int>(round(rightJoystick.x * rightJoystick.sensitivity * 500)),
+                                static_cast<int>(round(rightJoystick.y * rightJoystick.sensitivity * 500)));
                             lastUpdateTime = std::chrono::steady_clock::now();
                         }
                     } else {
                         functions.moveMouse(
-                            round(rightJoystick.x * static_cast<float>(center_x) * currentRadius + center_x),
-                            round(rightJoystick.y * static_cast<float>(center_y) * currentRadius + center_y));
+                            static_cast<int>(round(rightJoystick.x * center_x * currentRadius + center_x)),
+                            static_cast<int>(round(rightJoystick.y * center_y * currentRadius + center_y)));
                     }
                 }
             }

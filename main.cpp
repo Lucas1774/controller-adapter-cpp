@@ -1,9 +1,9 @@
 #define SDL_MAIN_HANDLED
 
+#include "chess.h"
 #include "constants.h"
 #include "swarm.h"
 #include "tft.h"
-#include "chess.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_main.h>
 #include <fstream>
@@ -60,7 +60,7 @@ int main(int argc, char *argv[]) {
     } else if (game == "tft") {
         tft::run(buttonState, hasTriggers, config, screenWidth, screenHeight, joystick);
     } else if (game == "chess") {
-        chess::run(buttonState, hasTriggers, config, screenWidth, screenHeight, joystick);
+        chess::run(buttonState, config, screenWidth, screenHeight);
     } else {
         std::cerr << "Invalid game" << std::endl;
     }
