@@ -24,7 +24,7 @@ static constexpr std::array<std::array<int, 4>, 4> CARD_ADJACENCY_MATRIX = {
      {PAD_LEFT, PAD_UP, PAD_RIGHT, NONE}}}; // reroll
 
 static bool updateAbstractState(const int button, State &state, BufferState &bufferState, const Functions &functions) {
-    if (!functions.isBufferFree(200, 50, button, bufferState)) {
+    if (!functions.isBufferFree(DEFAULT_SECOND_INPUT_DELAY_MILLIS, DEFAULT_SUBSEQUENT_INPUT_DELAY_MILLIS, button, bufferState)) {
         return false;
     }
     return functions.computeAdjacencyMatrixBasedTarget(CARD_ADJACENCY_MATRIX, CARD_COORDINATES, state.mouseTarget, state.cardIndex, button);
@@ -158,7 +158,7 @@ void run(std::unordered_map<int, int> &buttonState,
 
                 if (rightJoystick.isXActive || rightJoystick.isYActive) {
                     if (highPrecisionAlwaysOn || highPrecision) {
-                        if (std::chrono::steady_clock::now() - lastUpdateTime > std::chrono::milliseconds(16)) {
+                        if (std::chrono::steady_clock::now() - lastUpdateTime > std::chrono::milliseconds(MILLIS_PER_FRAME)) {
                             functions.moveMouseRelative(
                                 static_cast<int>(round(rightJoystick.x * rightJoystick.sensitivity * 100)),
                                 static_cast<int>(round(rightJoystick.y * rightJoystick.sensitivity * 100)),

@@ -5,6 +5,9 @@
 #include <unordered_map>
 #include <unordered_set>
 
+static constexpr int DEFAULT_SECOND_INPUT_DELAY_MILLIS = 200;
+static constexpr int DEFAULT_SUBSEQUENT_INPUT_DELAY_MILLIS = 50;
+static constexpr int MILLIS_PER_FRAME = 16;
 static constexpr int NONE = -1;
 static constexpr int CENTER_X = 960;
 static constexpr int CENTER_Y = 540;

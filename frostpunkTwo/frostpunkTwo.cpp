@@ -43,7 +43,7 @@ static bool updateAbstractState(const int button, State &state, BufferState &buf
     if (auto it = keyToFunction.find(button); it != keyToFunction.end()) {
         return it->second();
     }
-    if (!functions.isBufferFree(200, 50, button, bufferState)) {
+    if (!functions.isBufferFree(DEFAULT_SECOND_INPUT_DELAY_MILLIS, DEFAULT_SUBSEQUENT_INPUT_DELAY_MILLIS, button, bufferState)) {
         return false;
     }
     return functions.computeGridBasedTarget(SHOP_COORDINATES, state.mouseTarget, state.shopRow, state.speedColumn, button);
@@ -168,7 +168,7 @@ void run(std::unordered_map<int, int> &buttonState,
                     functions.handleToKeyHold(input);
                 }
 
-                if ((rightJoystick.isXActive || rightJoystick.isYActive) && std::chrono::steady_clock::now() - lastUpdateTime > std::chrono::milliseconds(16)) {
+                if ((rightJoystick.isXActive || rightJoystick.isYActive) && std::chrono::steady_clock::now() - lastUpdateTime > std::chrono::milliseconds(MILLIS_PER_FRAME)) {
                     functions.moveMouseRelative(
                         static_cast<int>(round(rightJoystick.x * rightJoystick.sensitivity * 100)),
                         static_cast<int>(round(rightJoystick.y * rightJoystick.sensitivity * 100)),

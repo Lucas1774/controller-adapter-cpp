@@ -46,7 +46,7 @@ static constexpr std::pair<int, int> RESIGN = {1177, 570};
 static constexpr std::pair<int, int> DRAW = {1163, 511};
 
 static bool updateAbstractState(const int button, State &state, BufferState &bufferState, const Functions &functions) {
-    if (!functions.isBufferFree(200, 50, button, bufferState)) {
+    if (!functions.isBufferFree(DEFAULT_SECOND_INPUT_DELAY_MILLIS, DEFAULT_SUBSEQUENT_INPUT_DELAY_MILLIS, button, bufferState)) {
         return false;
     }
 
@@ -132,7 +132,7 @@ void run(std::unordered_map<int, int> &buttonState,
 
     try {
         while (true) {
-            auto loop_start_time = std::chrono::steady_clock::now();
+            auto loopStartTime = std::chrono::steady_clock::now();
             std::vector<SDL_Event> events;
             SDL_Event eventBuffer;
             while (SDL_PollEvent(&eventBuffer)) {
@@ -167,7 +167,7 @@ void run(std::unordered_map<int, int> &buttonState,
             }
 
             std::this_thread::sleep_for(std::chrono::microseconds(std::max(
-                10000 - std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - loop_start_time).count(), 0LL)));
+                10000 - std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - loopStartTime).count(), 0LL)));
         }
     } catch (const std::exception &e) {
         std::cerr << "Exception: " << e.what() << std::endl;

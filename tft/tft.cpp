@@ -68,7 +68,7 @@ static constexpr std::array<std::array<int, 3>, 3> LOCK_ADJACENCY_MATRIX = {
      {PAD_DOWN, PAD_UP, NONE}}}; // 2
 
 static bool updateAbstractState(const int button, State &state, BufferState &bufferState, const Functions &functions) {
-    if (!functions.isBufferFree(200, 50, button, bufferState)) {
+    if (!functions.isBufferFree(DEFAULT_SECOND_INPUT_DELAY_MILLIS, DEFAULT_SUBSEQUENT_INPUT_DELAY_MILLIS, button, bufferState)) {
         return false;
     }
 
@@ -292,7 +292,7 @@ void run(std::unordered_map<int, int> &buttonState,
                 }
 
                 if (rightJoystick.isXActive || rightJoystick.isYActive) {
-                    if (std::chrono::steady_clock::now() - lastUpdateTime > std::chrono::milliseconds(16)) {
+                    if (std::chrono::steady_clock::now() - lastUpdateTime > std::chrono::milliseconds(MILLIS_PER_FRAME)) {
                         state.mode = MouseMovementWithPadMode::FREE;
                         functions.moveMouseRelative(
                             static_cast<int>(round(rightJoystick.x * rightJoystick.sensitivity * 100)),
@@ -304,7 +304,7 @@ void run(std::unordered_map<int, int> &buttonState,
                                                                                // The joystick has been "digitalized", however, the param is at hand and improves performance, so might as well use it.
                     state.mouseTarget = MOVE_COORDINATES[functions.generateAxisTargetWithBitMask(LEFT_JS)];
                     functions.moveMouse(state.mouseTarget.first, state.mouseTarget.second, resScalingX, resScalingY);
-                    if (std::chrono::steady_clock::now() - lastUpdateTime > std::chrono::milliseconds(100)) {
+                    if (std::chrono::steady_clock::now() - lastUpdateTime > std::chrono::milliseconds(MILLIS_PER_FRAME)) {
                         functions.click(SDL_BUTTON_RIGHT);
                         lastUpdateTime = std::chrono::steady_clock::now();
                     }
