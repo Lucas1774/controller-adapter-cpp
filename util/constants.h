@@ -34,6 +34,11 @@ enum Buttons {
     RIGHT_JS_DOWN
 };
 
+enum ButtonGroups { LEFT_JS,
+                    RIGHT_JS,
+                    PAD,
+                    TRIGGERS };
+
 const std::unordered_map<std::string, int> BUTTON_NAME_TO_BUTTON_ID = {
     {"A", A},
     {"B", B},

@@ -2,6 +2,7 @@
 #define FUNCTIONS_H
 
 #include "constants.h"
+#include "joystick.h"
 #include <SDL2/SDL.h>
 #include <chrono>
 #include <functional>
@@ -11,7 +12,7 @@
 
 class Functions {
   public:
-    void setMaps(const std::unordered_map<int, int> *buttonState,
+    void setMaps(std::unordered_map<int, int> *buttonState,
                  const std::unordered_map<int, std::pair<int, int> *> *input_to_mouse_move,
                  const std::unordered_map<int, std::pair<int, int> *> *release_to_mouse_move,
                  const std::unordered_map<int, int> *input_to_mouse_click,
@@ -25,20 +26,123 @@ class Functions {
                  const std::unordered_map<int, std::function<bool()>> *input_to_logic_after,
                  const std::unordered_map<int, std::function<bool()>> *release_to_logic_before,
                  const std::unordered_map<int, std::function<bool()>> *release_to_logic_after);
+
+    /// @brief Moves cursor to the specified position.
+    /// @param x x coordinate.
+    /// @param y y coordinate.
     void moveMouse(const int x, const int y) const;
+
+    /// @brief moves the cursor relative to the current position.
+    /// @param x x delta.
+    /// @param y y delta.
     void moveMouseRelative(const int x, const int y) const;
+
+    /// @brief sends a simple click.
+    /// @param button mouse button to click.
+    /// @param callback to be executed AFTER the click.
     void click(const int button, const std::function<void()> &callback = nullptr) const;
+
+    /// @brief moves the cursor to the specified position in input_to_mouse_move or release_to_mouse_move map if the input state matches eventType.
+    /// Can execute callbacks if defined in the corresponding logic before/after maps. Before callback is boolean and can stop the action.
+    /// @param input controller button linked to the click and key in the map.
+    /// @param eventType to match for the mouse to move to the mapped location. Can be any.
     void handleToMouseAbsoluteMove(const int &input, const int eventType) const;
+
+    /// @brief clicks the button defined in input_to_mouse_click or release_to_mouse_click map if the input state matches eventType.
+    /// Can execute callbacks if defined in the corresponding logic before/after maps. Before callback is boolean and can stop the action.
+    /// @param input controller button linked to the click and key in the map.
+    /// @param eventType to match for the mapped mouse button to be clicked. Can be any.
     void handleToClick(const int &input, const int eventType) const;
+
+    /// @brief  clicks the button if the input state matches eventType.
+    /// Can execute callbacks if defined in the corresponding logic before/after maps. Before callback is boolean and can stop the action.
+    /// @param input controller button linked to the click.
+    /// @param button mouse button to click.
+    /// @param eventType to match for the mouse button to be clicked. Can be any.
     void handleToClick(const int &input, const int button, const int eventType) const;
+
+    /// @brief toggles the button defined in input_to_button_toggle or release_to_button_toggle map if the input state matches eventType.
+    /// Can execute callbacks if defined in the corresponding logic before/after maps. Before callback is boolean and can stop the action.
+    /// @param input controller button linked to the click and key in the map.
+    /// @param eventType to match for the mapped mouse button to be toggled. Can be any.
     void handleToButtonToggle(const int &input, const int eventType) const;
+
+    /// @brief toggles the button if the input state matches eventType.
+    /// Can execute callbacks if defined in the corresponding logic before/after maps. Before callback is boolean and can stop the action.
+    /// @param input controller button linked to the mouse button toggle.
+    /// @param button mouse button to toggle.
+    /// @param eventType to match for the mouse button to be toggled. Can be any.
     void handleToButtonToggle(const int &input, const int button, const int eventType) const;
+
+    /// @brief taps the key defined in input_to_key_tap or release_to_key_tap map if the input state matches eventType.
+    /// Can execute callbacks if defined in the corresponding logic before/after maps. Before callback is boolean and can stop the action.
+    /// @param input controller button linked to the key tap and key in the map.
+    /// @param eventType to match for the mapped key to be tapped. Can be any.
     void handleToKeyTap(const int &input, const int eventType) const;
+
+    /// @brief taps the key if the input state matches eventType.
+    /// Can execute callbacks if defined in the corresponding logic before/after maps. Before callback is boolean and can stop the action.
+    /// @param input controller button linked to the key tap.
+    /// @param key key to tap.
+    /// @param eventType to match for the key to be tapped. Can be any.
     void handleToKeyTap(const int &input, const int key, const int eventType) const;
+
+    /// @brief holds the key defined in input_to_key_hold map while the input stays pressed.
+    /// Can execute callbacks if defined in the corresponding logic before/after maps. Before callback is boolean and can stop the action.
+    /// @param input controller button linked to the key hold and key in the map.
     void handleToKeyHold(const int &input) const;
+
+    /// @brief holds the key while the input stays pressed.
+    /// Can execute callbacks if defined in the corresponding logic before/after maps. Before callback is boolean and can stop the action.
+    /// @param input controller button linked to the key hold.
+    /// @param key key to hold.
     void handleToKeyHold(const int &input, const int key) const;
-    void handleState(int &state, const bool is_pressed) const;
+
+    /// @brief looks for activate button press to start the program. The activate button can be mapped in the config file.
+    /// @param events event pool.
+    /// @param buttonMapping to relate the event button id to the button id.
+    /// @param running reference to boolean to control the program loop.
+    void listenToRunEvent(const std::vector<SDL_Event> &events, const std::unordered_map<int, int> &buttonMapping, bool &running) const;
+
+    /// @brief updates button state with the next transition logic:
+    /// ```
+    /// | Previous State | is_pressed == true | is_pressed == false |
+    /// |----------------|--------------------|-------------------- |
+    /// | JUST_RELEASED  | JUST_PRESSED       | RELEASED            |
+    /// | RELEASED       | JUST_PRESSED       | RELEASED            |
+    /// | JUST_PRESSED   | PRESSED            | JUST_RELEASED       |
+    /// | PRESSED        | PRESSED            | JUST_RELEASED       |
+    /// ```
+    /// @param events event pool.
+    /// @param buttonMapping to relate the event button ids to the button ids.
+    void updateNonAnalogState(const std::vector<SDL_Event> &events, const std::unordered_map<int, int> &buttonMapping) const;
+
+    /// @brief updates linked virtual buttons for actual joysticks and L2 and R2 for triggers.
+    /// It should be combined with high deadzone values, at least for actual joysticks where both axis sit on the same physical element.
+    /// @param joystick the joystick connection to update its buttons for.
+    /// @param joystickMeta joystick data to update.
+    /// @param type to help the program know which joystick is being passed in an efficient way.
+    void updateJoystickAsDigital(SDL_Joystick *joystick, Joystick &joystickMeta, const ButtonGroups type) const;
+
+    /// @brief updates joystick or trigger data, without updating buttons related to the joystick.
+    /// @param joystick the joystick connection to update its data for.
+    /// @param joystickMeta joystick data to update.
+    /// @param type to help the program know which joystick is being passed in an efficient way.
+    void updateJoystickAsAnalog(SDL_Joystick *joystick, Joystick &joystickMeta, const ButtonGroups type) const;
+
+    /// @brief Implements a debounce mechanism to improve performance or input rhythm.
+    /// Should be used as if (isBufferFree()) { // Update state to trigger action }.
+    /// @param second_input_delay_mills duration for the buffer to allow an action from an input after a first action recorded in the buffer.
+    /// @param subsequent_inputs_delay_millis duration for the buffer to allow an action from an input after a non-first action recorded in the buffer.
+    /// @param button to debounce.
+    /// @param BufferState a buffer state that can be specific to the button, to a set of buttons or shared across all buttons.
+    /// @return true if the buffer is free, false otherwise.
     bool isBufferFree(const int second_input_delay_mills, const int subsequent_inputs_delay_millis, const int &button, BufferState &BufferState) const;
+
+    /// @brief gives an index for an 8-axis target, effectively creating virtual, diagonal buttons.
+    /// @param eightAxis the element to obtain the index for. Can be left joystick, right joystick, or D-PAD.
+    /// @return the index of the pressed virtual button, where 0 is the bottom-left button and 7 is the bottom one.
+    int generateAxisTargetWithBitMask(const ButtonGroups eightAxis) const;
 
   private:
     const std::unordered_map<int, DWORD> BUTTON_ID_TO_PRESS_EVENT = {
@@ -54,8 +158,8 @@ class Functions {
     void pressButton(const int button_to_click, const std::function<void()> &callback = nullptr) const;
     void releaseButton(const int button_to_release, const std::function<void()> &callback = nullptr) const;
     void pressThenRelease(const int key_to_tap, const std::function<void()> &callback = nullptr) const;
-    void clickThenRelease(const int button_to_click, const std::function<void()> &callback = nullptr) const;
-    const std::unordered_map<int, int> *buttonState;
+    void handleState(int &state, const bool is_pressed) const;
+    std::unordered_map<int, int> *buttonState;
     const std::unordered_map<int, std::pair<int, int> *> *input_to_mouse_move;
     const std::unordered_map<int, std::pair<int, int> *> *release_to_mouse_move;
     const std::unordered_map<int, int> *input_to_mouse_click;

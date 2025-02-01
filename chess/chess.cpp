@@ -100,40 +100,10 @@ void run(std::unordered_map<int, int> &buttonState,
                 events.push_back(eventBuffer);
             }
             if (!running) {
-                for (const auto &event : events) {
-                    if (event.type == SDL_JOYBUTTONDOWN) {
-                        int button = buttonMapping[event.jbutton.button];
-                        if (button == ACTIVATE) {
-                            running = true;
-                            break;
-                        }
-                    }
-                }
+                functions.listenToRunEvent(events, buttonMapping, running);
             } else {
                 // state
-                for (auto &[button, state] : buttonState) {
-                    if (state == JUST_PRESSED) {
-                        state = PRESSED;
-                    } else if (state == JUST_RELEASED) {
-                        state = RELEASED;
-                    }
-                }
-
-                for (const auto &event : events) {
-                    if (event.type == SDL_JOYBUTTONDOWN) {
-                        int button = buttonMapping[event.jbutton.button];
-                        functions.handleState(buttonState[button], true);
-                    } else if (event.type == SDL_JOYBUTTONUP) {
-                        int button = buttonMapping[event.jbutton.button];
-                        functions.handleState(buttonState[button], false);
-                    } else if (event.type == SDL_JOYHATMOTION) {
-                        functions.handleState(buttonState[PAD_LEFT], event.jhat.value == SDL_HAT_LEFT);
-                        functions.handleState(buttonState[PAD_RIGHT], event.jhat.value == SDL_HAT_RIGHT);
-                        functions.handleState(buttonState[PAD_DOWN], event.jhat.value == SDL_HAT_DOWN);
-                        functions.handleState(buttonState[PAD_UP], event.jhat.value == SDL_HAT_UP);
-                    }
-                }
-
+                functions.updateNonAnalogState(events, buttonMapping);
                 if (buttonState[ACTIVATE] == JUST_PRESSED) {
                     running = false;
                     continue;

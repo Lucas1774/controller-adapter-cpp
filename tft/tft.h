@@ -37,7 +37,7 @@ struct State {
     std::pair<int, int> mouse_target;
 };
 bool updateAbstractState(const int button, State &state, BufferState &bufferState, const float res_scaling_x, const float res_scaling_y, const Functions &functions);
-void updateAbstractState(const std::unordered_map<int, int> &buttonState, State &state, const float res_scaling_x, const float res_scaling_y);
+void updateAbstractState(const std::unordered_map<int, int> &buttonState, State &state, const float res_scaling_x, const float res_scaling_y, const Functions &functions);
 } // namespace tft
 
 #endif // TFT_H

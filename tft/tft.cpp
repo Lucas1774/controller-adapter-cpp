@@ -1,4 +1,5 @@
 #include "tft.h"
+#include "joystick.h"
 #include <chrono>
 #include <cmath>
 #include <fstream>
@@ -44,17 +45,8 @@ void run(std::unordered_map<int, int> &buttonState,
          const int screenWidth,
          const int screenHeight,
          SDL_Joystick *joystick) {
-    const int LEFT_JS_X_ID = config["left_joystick_x_id"].asInt();
-    const int LEFT_JS_Y_ID = config["left_joystick_y_id"].asInt();
-    const int RIGHT_JS_X_ID = config["right_joystick_x_id"].asInt();
-    const int RIGHT_JS_Y_ID = config["right_joystick_y_id"].asInt();
-    const int LEFT_TRIGGER_ID = config["left_trigger_id"].asInt();
-    const int RIGHT_TRIGGER_ID = config["right_trigger_id"].asInt();
-    const float LEFT_JS_DEAD_ZONE = config["left_joystick_dead_zone"].asFloat();
-    const float RIGHT_JS_DEAD_ZONE = config["right_joystick_dead_zone"].asFloat();
-    const float RIGHT_TRIGGER_DEAD_ZONE = config["right_trigger_dead_zone"].asFloat();
-    const float LEFT_TRIGGER_DEAD_ZONE = config["left_trigger_dead_zone"].asFloat();
-    const float RIGHT_JS_SENSITIVITY = config["right_joystick_sensitivity"].asFloat();
+    Joystick leftJoystick, rightJoystick, triggers;
+    initializeJoysticks(config, &leftJoystick, &rightJoystick, hasTriggers ? &triggers : nullptr);
     std::unordered_map<int, int> buttonMapping;
     for (const std::string &configKey : config["button_mapping"].getMemberNames()) {
         int key = config["button_mapping"][configKey].asInt() - 1;
@@ -111,11 +103,7 @@ void run(std::unordered_map<int, int> &buttonState,
     functions.setMaps(&buttonState, &INPUT_TO_MOUSE_MOVE, &RELEASE_TO_MOUSE_MOVE, &INPUT_TO_MOUSE_CLICK, nullptr, nullptr, nullptr, &INPUT_TO_KEY_TAP, nullptr, nullptr, &INPUT_TO_LOGIC_BEFORE, nullptr, nullptr, nullptr);
 
     try {
-        float leftX, leftY, rightX, rightY;
-        bool isLeftXActive, isLeftYActive, isRightXActive, isRightYActive, isLeftTriggerAxisActive, isRightTriggerAxisActive;
-
         auto lastUpdateTime = std::chrono::steady_clock::now();
-
         while (true) {
             auto loopStartTime = std::chrono::steady_clock::now();
             std::vector<SDL_Event> events;
@@ -124,70 +112,22 @@ void run(std::unordered_map<int, int> &buttonState,
                 events.push_back(event);
             }
             if (!running) {
-                for (const auto &event : events) {
-                    if (event.type == SDL_JOYBUTTONDOWN) {
-                        int button = buttonMapping[event.jbutton.button];
-                        if (button == ACTIVATE) {
-                            running = true;
-                            break;
-                        }
-                    }
-                }
+                functions.listenToRunEvent(events, buttonMapping, running);
             } else {
                 // state
-                for (auto &pair : buttonState) {
-                    int &state = pair.second;
-                    if (state == JUST_PRESSED) {
-                        state = PRESSED;
-                    } else if (state == JUST_RELEASED) {
-                        state = RELEASED;
-                    }
-                }
-
-                leftX = SDL_JoystickGetAxis(joystick, LEFT_JS_X_ID) / 32768.0f;
-                leftY = SDL_JoystickGetAxis(joystick, LEFT_JS_Y_ID) / 32768.0f;
-                isLeftXActive = std::abs(leftX) > LEFT_JS_DEAD_ZONE;
-                isLeftYActive = std::abs(leftY) > LEFT_JS_DEAD_ZONE;
-
-                functions.handleState(buttonState[LEFT_JS_LEFT], isLeftXActive && leftX < 0);
-                functions.handleState(buttonState[LEFT_JS_RIGHT], isLeftXActive && leftX > 0);
-                functions.handleState(buttonState[LEFT_JS_UP], isLeftYActive && leftY < 0);
-                functions.handleState(buttonState[LEFT_JS_DOWN], isLeftYActive && leftY > 0);
-
-                rightX = SDL_JoystickGetAxis(joystick, RIGHT_JS_X_ID) / 32768.0f;
-                rightY = SDL_JoystickGetAxis(joystick, RIGHT_JS_Y_ID) / 32768.0f;
-                isRightXActive = std::abs(rightX) > RIGHT_JS_DEAD_ZONE;
-                isRightYActive = std::abs(rightY) > RIGHT_JS_DEAD_ZONE;
-
-                if (hasTriggers) {
-                    functions.handleState(buttonState[R2],
-                                          (SDL_JoystickGetAxis(joystick, RIGHT_TRIGGER_ID) + 32768) / 65536.0f >
-                                              RIGHT_TRIGGER_DEAD_ZONE);
-                    functions.handleState(buttonState[L2],
-                                          (SDL_JoystickGetAxis(joystick, LEFT_TRIGGER_ID) + 32768) / 65536.0f >
-                                              LEFT_TRIGGER_DEAD_ZONE);
-                }
-
-                for (const auto &event : events) {
-                    if (event.type == SDL_JOYBUTTONDOWN) {
-                        int button = buttonMapping[event.jbutton.button];
-                        functions.handleState(buttonState[button], true);
-                    } else if (event.type == SDL_JOYBUTTONUP) {
-                        int button = buttonMapping[event.jbutton.button];
-                        functions.handleState(buttonState[button], false);
-                    } else if (event.type == SDL_JOYHATMOTION) {
-                        functions.handleState(buttonState[PAD_LEFT], event.jhat.value == SDL_HAT_LEFT);
-                        functions.handleState(buttonState[PAD_RIGHT], event.jhat.value == SDL_HAT_RIGHT);
-                        functions.handleState(buttonState[PAD_DOWN], event.jhat.value == SDL_HAT_DOWN);
-                        functions.handleState(buttonState[PAD_UP], event.jhat.value == SDL_HAT_UP);
-                    }
-                }
+                functions.updateNonAnalogState(events, buttonMapping);
                 if (buttonState[ACTIVATE] == JUST_PRESSED) {
                     running = false;
                     continue;
-                    // the code below is kind of horrible. It is what it is.
-                    // for item and board mode toggling, we remember positions to make it easier to build full items
-                } else if (buttonState[L1] == JUST_PRESSED) {
+                }
+                functions.updateJoystickAsDigital(joystick, leftJoystick, LEFT_JS);
+                functions.updateJoystickAsAnalog(joystick, rightJoystick, RIGHT_JS);
+                if (hasTriggers) {
+                    functions.updateJoystickAsDigital(joystick, triggers, TRIGGERS);
+                }
+                // the code below is kind of horrible. It is what it is.
+                // for item and board mode toggling, we remember positions to make it easier to build full items
+                if (buttonState[L1] == JUST_PRESSED) {
                     state.mode = ITEMS;
                     auto coordinates = ITEM_COORDINATES[state.itemColumn][state.itemRow];
                     state.mouse_target = {coordinates.first * res_scaling_x, coordinates.second * res_scaling_y};
@@ -270,16 +210,17 @@ void run(std::unordered_map<int, int> &buttonState,
                     functions.handleToButtonToggle(A, SDL_BUTTON_LEFT, JUST_PRESSED);
                 }
 
-                if (isRightXActive || isRightYActive) {
+                if (rightJoystick.isXActive || rightJoystick.isYActive) {
                     if (std::chrono::steady_clock::now() - lastUpdateTime > std::chrono::milliseconds(100)) {
                         state.mode = FREE;
                         functions.moveMouseRelative(
-                            round(rightX * RIGHT_JS_SENSITIVITY * 500 * res_scaling_x),
-                            round(rightY * RIGHT_JS_SENSITIVITY * 500 * res_scaling_y));
+                            round(rightJoystick.x * rightJoystick.sensitivity * 500 * res_scaling_x),
+                            round(rightJoystick.y * rightJoystick.sensitivity * 500 * res_scaling_y));
                         lastUpdateTime = std::chrono::steady_clock::now();
                     }
-                } else if (isLeftXActive || isLeftYActive) {
-                    updateAbstractState(buttonState, state, res_scaling_x, res_scaling_y);
+                } else if (leftJoystick.isXActive || leftJoystick.isYActive) { // leftJoystick isActive breaks the program semantics:
+                                                                               // The joystick has been "digitalized", however, the param is at hand and improves performance, so might as well use it.
+                    updateAbstractState(buttonState, state, res_scaling_x, res_scaling_y, functions);
                     functions.moveMouse(state.mouse_target.first, state.mouse_target.second);
                     if (std::chrono::steady_clock::now() - lastUpdateTime > std::chrono::milliseconds(100)) {
                         functions.click(SDL_BUTTON_RIGHT);
@@ -374,29 +315,8 @@ bool updateAbstractState(const int button, State &state, BufferState &bufferStat
     return true;
 }
 
-void updateAbstractState(const std::unordered_map<int, int> &buttonState, State &state, const float res_scaling_x, const float res_scaling_y) {
-    static const int LEFT_MASK = 1;
-    static const int RIGHT_MASK = 2;
-    static const int UP_MASK = 4;
-    static const int DOWN_MASK = 8;
-
-    static const std::unordered_map<int, int> DIRECTION_TO_MOVE_INDEX = {
-        {LEFT_MASK | DOWN_MASK, 0},
-        {LEFT_MASK, 1},
-        {LEFT_MASK | UP_MASK, 2},
-        {UP_MASK, 3},
-        {RIGHT_MASK | DOWN_MASK, 6},
-        {RIGHT_MASK, 5},
-        {RIGHT_MASK | UP_MASK, 4},
-        {DOWN_MASK, 7}};
-
-    bool left = PRESSED_STATES.find(buttonState.at(LEFT_JS_LEFT)) != PRESSED_STATES.end();
-    bool right = PRESSED_STATES.find(buttonState.at(LEFT_JS_RIGHT)) != PRESSED_STATES.end();
-    bool up = PRESSED_STATES.find(buttonState.at(LEFT_JS_UP)) != PRESSED_STATES.end();
-    bool down = PRESSED_STATES.find(buttonState.at(LEFT_JS_DOWN)) != PRESSED_STATES.end();
-
-    int bitmask = (left * LEFT_MASK) | (right * RIGHT_MASK) | (up * UP_MASK) | (down * DOWN_MASK);
-    auto coordinates = MOVE_COORDINATES[DIRECTION_TO_MOVE_INDEX.find(bitmask)->second];
+void updateAbstractState(const std::unordered_map<int, int> &buttonState, State &state, const float res_scaling_x, const float res_scaling_y, const Functions &functions) {
+    auto coordinates = MOVE_COORDINATES[functions.generateAxisTargetWithBitMask(LEFT_JS)];
     state.mouse_target = {coordinates.first * res_scaling_x, coordinates.second * res_scaling_y};
 }
 } // namespace tft

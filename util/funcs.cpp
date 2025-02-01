@@ -3,7 +3,7 @@
 #include <thread>
 #include <windows.h>
 
-void Functions::setMaps(const std::unordered_map<int, int> *buttonState,
+void Functions::setMaps(std::unordered_map<int, int> *buttonState,
                         const std::unordered_map<int, std::pair<int, int> *> *input_to_mouse_move,
                         const std::unordered_map<int, std::pair<int, int> *> *release_to_mouse_move,
                         const std::unordered_map<int, int> *input_to_mouse_click,
@@ -183,6 +183,20 @@ void Functions::handleToKeyHold(const int &input, const int key) const {
     }
 }
 
+void Functions::listenToRunEvent(const std::vector<SDL_Event> &events,
+                                 const std::unordered_map<int, int> &buttonMapping,
+                                 bool &running) const {
+    for (const auto &event : events) {
+        if (event.type == SDL_JOYBUTTONDOWN) {
+            int button = buttonMapping.at(event.jbutton.button);
+            if (button == ACTIVATE) {
+                running = true;
+                return;
+            }
+        }
+    }
+}
+
 void Functions::handleState(int &state, bool is_pressed) const {
     if (is_pressed) {
         if (state == RELEASED) {
@@ -192,6 +206,76 @@ void Functions::handleState(int &state, bool is_pressed) const {
         if (state == PRESSED) {
             state = JUST_RELEASED;
         }
+    }
+}
+
+void Functions::updateNonAnalogState(const std::vector<SDL_Event> &events, const std::unordered_map<int, int> &buttonMapping) const {
+    auto &buttonStateRef = *buttonState;
+    for (auto &[_, state] : buttonStateRef) {
+        if (state == JUST_PRESSED) {
+            state = PRESSED;
+        } else if (state == JUST_RELEASED) {
+            state = RELEASED;
+        }
+    }
+    for (const auto &event : events) {
+        if (event.type == SDL_JOYBUTTONDOWN) {
+            int button = buttonMapping.at(event.jbutton.button);
+            this->handleState(buttonStateRef.at(button), true);
+        } else if (event.type == SDL_JOYBUTTONUP) {
+            int button = buttonMapping.at(event.jbutton.button);
+            this->handleState(buttonStateRef.at(button), false);
+        } else if (event.type == SDL_JOYHATMOTION) {
+            this->handleState(buttonStateRef.at(PAD_LEFT), event.jhat.value == SDL_HAT_LEFT);
+            this->handleState(buttonStateRef.at(PAD_RIGHT), event.jhat.value == SDL_HAT_RIGHT);
+            this->handleState(buttonStateRef.at(PAD_DOWN), event.jhat.value == SDL_HAT_DOWN);
+            this->handleState(buttonStateRef.at(PAD_UP), event.jhat.value == SDL_HAT_UP);
+        }
+    }
+}
+
+void Functions::updateJoystickAsDigital(SDL_Joystick *joystick, Joystick &meta, ButtonGroups type) const {
+    updateJoystickAsAnalog(joystick, meta, type);
+    auto &buttonStateRef = *buttonState;
+    switch (type) {
+    case LEFT_JS:
+        this->handleState(buttonStateRef.at(LEFT_JS_LEFT), meta.isXActive && meta.x < 0);
+        this->handleState(buttonStateRef.at(LEFT_JS_RIGHT), meta.isXActive && meta.x > 0);
+        this->handleState(buttonStateRef.at(LEFT_JS_UP), meta.isYActive && meta.y < 0);
+        this->handleState(buttonStateRef.at(LEFT_JS_DOWN), meta.isYActive && meta.y > 0);
+        break;
+    case RIGHT_JS:
+        this->handleState(buttonStateRef.at(RIGHT_JS_LEFT), meta.isXActive && meta.x < 0);
+        this->handleState(buttonStateRef.at(RIGHT_JS_RIGHT), meta.isXActive && meta.x > 0);
+        this->handleState(buttonStateRef.at(RIGHT_JS_UP), meta.isYActive && meta.y < 0);
+        this->handleState(buttonStateRef.at(RIGHT_JS_DOWN), meta.isYActive && meta.y > 0);
+        break;
+    case TRIGGERS:
+        this->handleState(buttonStateRef.at(L2), meta.isXActive);
+        this->handleState(buttonStateRef.at(R2), meta.isYActive);
+        break;
+    default:
+        break;
+    }
+}
+
+void Functions::updateJoystickAsAnalog(SDL_Joystick *joystick, Joystick &meta, const ButtonGroups type) const {
+    switch (type) {
+    case TRIGGERS:
+        meta.x = (SDL_JoystickGetAxis(joystick, meta.xId) + 32768) / 65536.0f;
+        meta.y = (SDL_JoystickGetAxis(joystick, meta.yId) + 32768) / 65536.0f;
+        meta.isXActive = meta.x > meta.deadZone;
+        meta.isYActive = meta.y > meta.deadZone;
+        break;
+    case LEFT_JS:
+    case RIGHT_JS:
+        meta.x = SDL_JoystickGetAxis(joystick, meta.xId) / 32768.0f;
+        meta.y = SDL_JoystickGetAxis(joystick, meta.yId) / 32768.0f;
+        meta.isXActive = std::abs(meta.x) > meta.deadZone;
+        meta.isYActive = std::abs(meta.y) > meta.deadZone;
+        break;
+    default:
+        break;
     }
 }
 
@@ -209,5 +293,50 @@ bool Functions::isBufferFree(const int second_input_delay_mills, const int subse
             bufferState.last_pressed = now;
         }
         return true;
+    }
+}
+
+int Functions::generateAxisTargetWithBitMask(const ButtonGroups eightAxis) const {
+    static const int LEFT_MASK = 1;
+    static const int RIGHT_MASK = 2;
+    static const int UP_MASK = 4;
+    static const int DOWN_MASK = 8;
+
+    static const std::unordered_map<int, int> DIRECTION_TO_MOVE_INDEX = {
+        {LEFT_MASK | DOWN_MASK, 0},
+        {LEFT_MASK, 1},
+        {LEFT_MASK | UP_MASK, 2},
+        {UP_MASK, 3},
+        {RIGHT_MASK | DOWN_MASK, 6},
+        {RIGHT_MASK, 5},
+        {RIGHT_MASK | UP_MASK, 4},
+        {DOWN_MASK, 7}};
+
+    auto &buttonStateRef = *buttonState;
+    int bitmask, left, right, up, down;
+    switch (eightAxis) {
+    case LEFT_JS:
+        left = PRESSED_STATES.find(buttonStateRef.at(LEFT_JS_LEFT)) != PRESSED_STATES.end();
+        right = PRESSED_STATES.find(buttonStateRef.at(LEFT_JS_RIGHT)) != PRESSED_STATES.end();
+        up = PRESSED_STATES.find(buttonStateRef.at(LEFT_JS_UP)) != PRESSED_STATES.end();
+        down = PRESSED_STATES.find(buttonStateRef.at(LEFT_JS_DOWN)) != PRESSED_STATES.end();
+        bitmask = (left * LEFT_MASK) | (right * RIGHT_MASK) | (up * UP_MASK) | (down * DOWN_MASK);
+        return DIRECTION_TO_MOVE_INDEX.find(bitmask)->second;
+    case RIGHT_JS:
+        left = PRESSED_STATES.find(buttonStateRef.at(RIGHT_JS_LEFT)) != PRESSED_STATES.end();
+        right = PRESSED_STATES.find(buttonStateRef.at(RIGHT_JS_RIGHT)) != PRESSED_STATES.end();
+        up = PRESSED_STATES.find(buttonStateRef.at(RIGHT_JS_UP)) != PRESSED_STATES.end();
+        down = PRESSED_STATES.find(buttonStateRef.at(RIGHT_JS_DOWN)) != PRESSED_STATES.end();
+        bitmask = (left * LEFT_MASK) | (right * RIGHT_MASK) | (up * UP_MASK) | (down * DOWN_MASK);
+        return DIRECTION_TO_MOVE_INDEX.find(bitmask)->second;
+    case PAD:
+        left = PRESSED_STATES.find(buttonStateRef.at(PAD_LEFT)) != PRESSED_STATES.end();
+        right = PRESSED_STATES.find(buttonStateRef.at(PAD_RIGHT)) != PRESSED_STATES.end();
+        up = PRESSED_STATES.find(buttonStateRef.at(PAD_UP)) != PRESSED_STATES.end();
+        down = PRESSED_STATES.find(buttonStateRef.at(PAD_DOWN)) != PRESSED_STATES.end();
+        bitmask = (left * LEFT_MASK) | (right * RIGHT_MASK) | (up * UP_MASK) | (down * DOWN_MASK);
+        return DIRECTION_TO_MOVE_INDEX.find(bitmask)->second;
+    default:
+        return -1;
     }
 }
