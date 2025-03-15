@@ -1,4 +1,5 @@
 #include "tft.h"
+#include "configParser.h"
 #include "joystick.h"
 #include <chrono>
 #include <cmath>
@@ -33,10 +34,10 @@ const std::vector<std::vector<std::pair<int, int>>> CARD_COORDINATES = {
 
 const std::vector<std::pair<int, int>> LOCK_COORDINATES = {{1450, 905}, {1323, 948}, {1327, 1027}};
 
-constexpr int LOCK_ADJACENCY_MATRIX[3][3] = {
-    {NONE, PAD_DOWN, PAD_UP}, // lock
-    {PAD_UP, NONE, PAD_DOWN}, // 1
-    {PAD_DOWN, PAD_UP, NONE}, // 2
+constexpr std::array<std::array<int, 3>, 3> LOCK_ADJACENCY_MATRIX = {
+    std::array<int, 3>{NONE, PAD_DOWN, PAD_UP}, // lock
+    std::array<int, 3>{PAD_UP, NONE, PAD_DOWN}, // 1
+    std::array<int, 3>{PAD_DOWN, PAD_UP, NONE}, // 2
 };
 
 void run(std::unordered_map<int, int> &buttonState,
@@ -46,13 +47,9 @@ void run(std::unordered_map<int, int> &buttonState,
          const int screenHeight,
          SDL_Joystick *joystick) {
     Joystick leftJoystick, rightJoystick, triggers;
-    initializeJoysticks(config, &leftJoystick, &rightJoystick, hasTriggers ? &triggers : nullptr);
-    std::unordered_map<int, int> buttonMapping;
-    for (const std::string &configKey : config["button_mapping"].getMemberNames()) {
-        int key = config["button_mapping"][configKey].asInt() - 1;
-        buttonMapping[key] = BUTTON_NAME_TO_BUTTON_ID.at(configKey);
-    }
-    bool running = config["run_automatically"].asBool();
+    configParser::initializeJoysticks(config, &leftJoystick, &rightJoystick, hasTriggers ? &triggers : nullptr);
+    std::unordered_map<int, int> buttonMapping = configParser::readButtonMapping(config);
+    bool running = configParser::readRunAutomatically(config);
 
     Functions functions;
     const double res_scaling_x = screenWidth / 1920;

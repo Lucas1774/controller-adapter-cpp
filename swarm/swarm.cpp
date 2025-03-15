@@ -1,4 +1,5 @@
 #include "swarm.h"
+#include "configParser.h"
 #include "constants.h"
 #include "funcs.h"
 #include <chrono>
@@ -18,13 +19,9 @@ void run(std::unordered_map<int, int> &buttonState,
          const int screenHeight,
          SDL_Joystick *joystick) {
     Joystick leftJoystick, rightJoystick, triggers;
-    initializeJoysticks(config, &leftJoystick, &rightJoystick, hasTriggers ? &triggers : nullptr);
-    std::unordered_map<int, int> buttonMapping;
-    for (const auto &configKey : config["button_mapping"].getMemberNames()) {
-        int key = config["button_mapping"][configKey].asInt() - 1;
-        buttonMapping[key] = BUTTON_NAME_TO_BUTTON_ID.at(configKey);
-    }
-    bool running = config["run_automatically"].asBool();
+    configParser::initializeJoysticks(config, &leftJoystick, &rightJoystick, hasTriggers ? &triggers : nullptr);
+    std::unordered_map<int, int> buttonMapping = configParser::readButtonMapping(config);
+    bool running = configParser::readRunAutomatically(config);
     bool highPrecision;
     std::ifstream configFile("swarm/config.json");
     Json::Value specificConfig;

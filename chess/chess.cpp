@@ -1,4 +1,5 @@
 #include "chess.h"
+#include "configParser.h"
 #include "constants.h"
 #include <chrono>
 #include <cmath>
@@ -30,18 +31,14 @@ void run(std::unordered_map<int, int> &buttonState,
          const Json::Value &config,
          const int screenWidth,
          const int screenHeight) {
-    std::unordered_map<int, int> buttonMapping;
-    for (const auto &configKey : config["button_mapping"].getMemberNames()) {
-        int key = config["button_mapping"][configKey].asInt() - 1;
-        buttonMapping[key] = BUTTON_NAME_TO_BUTTON_ID.at(configKey);
-    }
-    bool running = config["run_automatically"].asBool();
+    std::unordered_map<int, int> buttonMapping = configParser::readButtonMapping(config);
+    bool running = configParser::readRunAutomatically(config);
 
     Functions functions;
-    const auto PLAY_AGAIN_POS = std::make_pair(1255, 539);
-    const auto REMATCH_POS = std::make_pair(1431, 536);
-    const auto RESIGN_POS = std::make_pair(1177, 570);
-    const auto DRAW_POS = std::make_pair(1163, 511);
+    const auto [PLAY_AGAIN_X, PLAY_AGAIN_Y] = std::make_pair(1255, 539);
+    const auto [REMATCH_X, REMATCH_Y] = std::make_pair(1431, 536);
+    const auto [RESIGN_X, RESIGN_Y] = std::make_pair(1177, 570);
+    const auto [DRAW_X, DRAW_Y] = std::make_pair(1163, 511);
     const auto TURBO_INPUTS = std::unordered_set<int>{PAD_LEFT, PAD_RIGHT, PAD_UP, PAD_DOWN};
 
     const double res_scaling_x = screenWidth / 1920;
@@ -71,10 +68,10 @@ void run(std::unordered_map<int, int> &buttonState,
     const auto INPUT_TO_BUTTON_TOGGLE = std::unordered_map<int, int>{{A, SDL_BUTTON_LEFT}};
     const auto RELEASE_TO_BUTTON_TOGGLE = std::unordered_map<int, int>{{A, SDL_BUTTON_LEFT}};
     const auto INPUT_TO_LOGIC_BEFORE = std::unordered_map<int, std::function<bool()>>{
-        {L1, [&]() { functions.moveMouse(static_cast<int>(REMATCH_POS.first * res_scaling_x), static_cast<int>(REMATCH_POS.second * res_scaling_y)); return true; }},
-        {R1, [&]() { functions.moveMouse(static_cast<int>(PLAY_AGAIN_POS.first * res_scaling_x), static_cast<int>(PLAY_AGAIN_POS.second * res_scaling_y)); return true; }},
-        {X, [&]() { functions.moveMouse(static_cast<int>(DRAW_POS.first * res_scaling_x), static_cast<int>(DRAW_POS.second * res_scaling_y)); return true; }},
-        {Y, [&]() { functions.moveMouse(static_cast<int>(RESIGN_POS.first * res_scaling_x), static_cast<int>(RESIGN_POS.second * res_scaling_y)); return true; }},
+        {L1, [&]() { functions.moveMouse(static_cast<int>(REMATCH_X * res_scaling_x), static_cast<int>(REMATCH_Y * res_scaling_y)); return true; }},
+        {R1, [&]() { functions.moveMouse(static_cast<int>(PLAY_AGAIN_X * res_scaling_x), static_cast<int>(PLAY_AGAIN_Y * res_scaling_y)); return true; }},
+        {X, [&]() { functions.moveMouse(static_cast<int>(DRAW_X * res_scaling_x), static_cast<int>(DRAW_Y * res_scaling_y)); return true; }},
+        {Y, [&]() { functions.moveMouse(static_cast<int>(RESIGN_X * res_scaling_x), static_cast<int>(RESIGN_Y * res_scaling_y)); return true; }},
         {PAD_LEFT, [&]() { return updateAbstractState(PAD_LEFT, programState, bufferState, res_scaling_x, res_scaling_y, functions); }},
         {PAD_RIGHT, [&]() { return updateAbstractState(PAD_RIGHT, programState, bufferState, res_scaling_x, res_scaling_y, functions); }},
         {PAD_UP, [&]() { return updateAbstractState(PAD_UP, programState, bufferState, res_scaling_x, res_scaling_y, functions); }},
