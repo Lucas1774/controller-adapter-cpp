@@ -11,21 +11,21 @@
 #include <windows.h>
 
 namespace chess {
-const std::vector<std::vector<std::pair<int, int>>> BOARD_COORDINATES = {
-    {{304, 929}, {413, 928}, {511, 928}, {624, 925}, {725, 924}, {829, 925}, {937, 926}, {1039, 928}},
-    {{308, 819}, {412, 822}, {518, 820}, {623, 822}, {724, 824}, {830, 822}, {934, 823}, {1042, 823}},
-    {{295, 712}, {411, 713}, {510, 709}, {620, 712}, {724, 703}, {830, 712}, {930, 709}, {1035, 709}},
-    {{295, 607}, {409, 606}, {512, 610}, {619, 605}, {718, 607}, {829, 606}, {931, 603}, {1034, 605}},
-    {{294, 499}, {405, 501}, {506, 499}, {618, 496}, {719, 498}, {828, 497}, {936, 497}, {1035, 497}},
-    {{299, 391}, {409, 393}, {513, 389}, {615, 390}, {719, 391}, {829, 391}, {935, 399}, {1034, 394}},
-    {{306, 295}, {409, 295}, {511, 295}, {616, 295}, {725, 295}, {826, 299}, {933, 296}, {1037, 296}},
-    {{304, 190}, {412, 190}, {517, 189}, {615, 189}, {722, 187}, {830, 190}, {935, 193}, {1044, 192}}};
+constexpr std::array<std::array<std::pair<int, int>, 8>, 8> BOARD_COORDINATES = {
+    {{{{304, 929}, {413, 928}, {511, 928}, {624, 925}, {725, 924}, {829, 925}, {937, 926}, {1039, 928}}},
+     {{{308, 819}, {412, 822}, {518, 820}, {623, 822}, {724, 824}, {830, 822}, {934, 823}, {1042, 823}}},
+     {{{295, 712}, {411, 713}, {510, 709}, {620, 712}, {724, 703}, {830, 712}, {930, 709}, {1035, 709}}},
+     {{{295, 607}, {409, 606}, {512, 610}, {619, 605}, {718, 607}, {829, 606}, {931, 603}, {1034, 605}}},
+     {{{294, 499}, {405, 501}, {506, 499}, {618, 496}, {719, 498}, {828, 497}, {936, 497}, {1035, 497}}},
+     {{{299, 391}, {409, 393}, {513, 389}, {615, 390}, {719, 391}, {829, 391}, {935, 399}, {1034, 394}}},
+     {{{306, 295}, {409, 295}, {511, 295}, {616, 295}, {725, 295}, {826, 299}, {933, 296}, {1037, 296}}},
+     {{{304, 190}, {412, 190}, {517, 189}, {615, 189}, {722, 187}, {830, 190}, {935, 193}, {1044, 192}}}}};
 
-const std::vector<std::pair<int, int>> RESIGN_YES_NO = {
-    {1176, 510}, {1120, 505}};
+constexpr std::array<std::pair<int, int>, 2> RESIGN_YES_NO = {
+    {{1176, 510}, {1120, 505}}};
 
-const std::vector<std::pair<int, int>> DRAW_YES_NO = {
-    {1182, 450}, {1118, 448}};
+constexpr std::array<std::pair<int, int>, 2> DRAW_YES_NO = {
+    {{1182, 450}, {1118, 448}}};
 
 void run(std::unordered_map<int, int> &buttonState,
          const Json::Value &config,
@@ -35,10 +35,10 @@ void run(std::unordered_map<int, int> &buttonState,
     bool running = configParser::readRunAutomatically(config);
 
     Functions functions;
-    const auto [PLAY_AGAIN_X, PLAY_AGAIN_Y] = std::make_pair(1255, 539);
-    const auto [REMATCH_X, REMATCH_Y] = std::make_pair(1431, 536);
-    const auto [RESIGN_X, RESIGN_Y] = std::make_pair(1177, 570);
-    const auto [DRAW_X, DRAW_Y] = std::make_pair(1163, 511);
+    constexpr std::pair<int, int> PLAY_AGAIN = {1255, 539};
+    constexpr std::pair<int, int> REMATCH = {1431, 536};
+    constexpr std::pair<int, int> RESIGN = {1177, 570};
+    constexpr std::pair<int, int> DRAW = {1163, 511};
     const auto TURBO_INPUTS = std::unordered_set<int>{PAD_LEFT, PAD_RIGHT, PAD_UP, PAD_DOWN};
 
     const double res_scaling_x = screenWidth / 1920;
@@ -68,10 +68,10 @@ void run(std::unordered_map<int, int> &buttonState,
     const auto INPUT_TO_BUTTON_TOGGLE = std::unordered_map<int, int>{{A, SDL_BUTTON_LEFT}};
     const auto RELEASE_TO_BUTTON_TOGGLE = std::unordered_map<int, int>{{A, SDL_BUTTON_LEFT}};
     const auto INPUT_TO_LOGIC_BEFORE = std::unordered_map<int, std::function<bool()>>{
-        {L1, [&]() { functions.moveMouse(static_cast<int>(REMATCH_X * res_scaling_x), static_cast<int>(REMATCH_Y * res_scaling_y)); return true; }},
-        {R1, [&]() { functions.moveMouse(static_cast<int>(PLAY_AGAIN_X * res_scaling_x), static_cast<int>(PLAY_AGAIN_Y * res_scaling_y)); return true; }},
-        {X, [&]() { functions.moveMouse(static_cast<int>(DRAW_X * res_scaling_x), static_cast<int>(DRAW_Y * res_scaling_y)); return true; }},
-        {Y, [&]() { functions.moveMouse(static_cast<int>(RESIGN_X * res_scaling_x), static_cast<int>(RESIGN_Y * res_scaling_y)); return true; }},
+        {L1, [&]() { functions.moveMouse(static_cast<int>(REMATCH.first * res_scaling_x), static_cast<int>(REMATCH.second * res_scaling_y)); return true; }},
+        {R1, [&]() { functions.moveMouse(static_cast<int>(PLAY_AGAIN.first * res_scaling_x), static_cast<int>(PLAY_AGAIN.second * res_scaling_y)); return true; }},
+        {X, [&]() { functions.moveMouse(static_cast<int>(DRAW.first * res_scaling_x), static_cast<int>(DRAW.second * res_scaling_y)); return true; }},
+        {Y, [&]() { functions.moveMouse(static_cast<int>(RESIGN.first * res_scaling_x), static_cast<int>(RESIGN.second * res_scaling_y)); return true; }},
         {PAD_LEFT, [&]() { return updateAbstractState(PAD_LEFT, programState, bufferState, res_scaling_x, res_scaling_y, functions); }},
         {PAD_RIGHT, [&]() { return updateAbstractState(PAD_RIGHT, programState, bufferState, res_scaling_x, res_scaling_y, functions); }},
         {PAD_UP, [&]() { return updateAbstractState(PAD_UP, programState, bufferState, res_scaling_x, res_scaling_y, functions); }},

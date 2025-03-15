@@ -297,10 +297,10 @@ bool Functions::isBufferFree(const int second_input_delay_mills, const int subse
 }
 
 int Functions::generateAxisTargetWithBitMask(const ButtonGroups eightAxis) const {
-    static const int LEFT_MASK = 1;
-    static const int RIGHT_MASK = 2;
-    static const int UP_MASK = 4;
-    static const int DOWN_MASK = 8;
+    static constexpr int LEFT_MASK = 1;
+    static constexpr int RIGHT_MASK = 2;
+    static constexpr int UP_MASK = 4;
+    static constexpr int DOWN_MASK = 8;
 
     static const std::unordered_map<int, int> DIRECTION_TO_MOVE_INDEX = {
         {LEFT_MASK | DOWN_MASK, 0},
