@@ -55,13 +55,13 @@ static bool updateAbstractState(const int button, State &state, BufferState &buf
 
     static const std::map<Mode, std::function<bool()>> modeToFunction = {
         {Mode::BOARD, [&functions, &state, &button]() {
-             return functions.computeGridBasedMouseTarget(BOARD_COORDINATES, state.mouseTarget, state.boardRow, state.boardColumn, button);
+             return functions.computeGridBasedTarget(BOARD_COORDINATES, state.mouseTarget, state.boardRow, state.boardColumn, button);
          }},
         {Mode::RESIGN, [&functions, &state, &button]() {
-             return functions.computeGridBasedMouseTarget(RESIGN_YES_NO, state.mouseTarget, state.resignRow, state.resignColumn, button);
+             return functions.computeGridBasedTarget(RESIGN_YES_NO, state.mouseTarget, state.resignRow, state.resignColumn, button);
          }},
         {Mode::DRAW, [&functions, &state, &button]() {
-             return functions.computeGridBasedMouseTarget(DRAW_YES_NO, state.mouseTarget, state.drawRow, state.drawColumn, button);
+             return functions.computeGridBasedTarget(DRAW_YES_NO, state.mouseTarget, state.drawRow, state.drawColumn, button);
          }}};
 
     if (auto it = modeToFunction.find(state.mode); it != modeToFunction.end()) {

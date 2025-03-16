@@ -49,27 +49,27 @@ class Functions {
     /// Can execute callbacks if defined in the corresponding logic before/after maps. Before callback is boolean and can stop the action.
     /// @param input controller button linked to the click.
     /// @param eventType to match for the mouse button to be clicked. Can be any.
-    /// @param button mouse button to click. If none is provided it will be obtained from the corresponding maps. 
+    /// @param button mouse button to click. If none is provided it will be obtained from the corresponding maps.
     void handleToClick(const int &input, const int eventType, const int button = -1) const;
 
     /// @brief toggles the button if the input state matches eventType.
     /// Can execute callbacks if defined in the corresponding logic before/after maps. Before callback is boolean and can stop the action.
     /// @param input controller button linked to the mouse button toggle.
     /// @param eventType to match for the mouse button to be toggled. Can be any.
-    /// @param button mouse button to toggle. If none is provided it will be obtained from the corresponding maps. 
+    /// @param button mouse button to toggle. If none is provided it will be obtained from the corresponding maps.
     void handleToButtonToggle(const int &input, const int eventType, const int button = -1) const;
 
     /// @brief taps the key if the input state matches eventType.
     /// Can execute callbacks if defined in the corresponding logic before/after maps. Before callback is boolean and can stop the action.
     /// @param input controller button linked to the key tap.
     /// @param eventType to match for the key to be tapped. Can be any.
-    /// @param key key to tap. If none is provided it will be obtained from the corresponding maps. 
+    /// @param key key to tap. If none is provided it will be obtained from the corresponding maps.
     void handleToKeyTap(const int &input, const int eventType, const int key = -1) const;
 
     /// @brief holds the key while the input stays pressed.
     /// Can execute callbacks if defined in the corresponding logic before/after maps. Before callback is boolean and can stop the action.
     /// @param input controller button linked to the key hold.
-    /// @param key key to hold. If none is provided it will be obtained from the corresponding maps. 
+    /// @param key key to hold. If none is provided it will be obtained from the corresponding maps.
     void handleToKeyHold(const int &input, const int key = -1) const;
 
     /// @brief looks for activate button press to start the program. The activate button can be mapped in the config file.
@@ -118,34 +118,35 @@ class Functions {
     /// @return the index of the pressed virtual button, where 0 is the bottom-left button and 7 is the bottom one.
     int generateAxisTargetWithBitMask(const ButtonGroups eightAxis) const;
 
-    /// @brief returns coordinates for a mouse target based on an adjacency matrix to update dynamic state in callback before input action.
-    /// Should be used in callback before input maps for inputs mapped to dynamic target mouse movements.
-    /// @tparam Elements size of the coordinate array.
+    /// @brief updates target based on an adjacency matrix to update dynamic state in callback before input action.
+    /// Should be used in callback before input maps for inputs mapped to dynamic targets.
+    /// @tparam Elements size of the target array.
     /// @param adjacencyMatrix adjacency matrix to determine the next target based on the current target and the input button.
-    /// @param coordinates coordinate array.
-    /// @param newCoordinates to be updated by the function.
-    /// @param index current index in the coordinate array. To be updated by the function.
-    /// @param button input button to determine the next target.
-    /// @return true if a mouse target update was made and thus a mouse move call should be made.
-    template <size_t Elements>
-    bool computeAdjacencyMatrixBasedMouseTarget(
+    /// @param target typically a pair of coordinates.
+    /// @param newTarget to be updated by the function.
+    /// @param index current index in the array. To be updated by the function.
+    /// @param button input button to determine the next target in the array.
+    /// @return true if a target update was made and thus a call should be made.
+    template <typename Target, size_t Elements>
+    bool computeAdjacencyMatrixBasedTarget(
         const std::array<std::array<int, Elements>, Elements> &adjacencyMatrix,
-        const std::array<std::pair<int, int>, Elements> &coordinates,
-        std::pair<int, int> &newCoordinates, int &index, const int button) const;
+        const std::array<Target, Elements> &target,
+        Target &newTarget, int &index, const int button) const;
 
-    /// @brief returns coordinates for a mouse target based on a 2D coordinate grid to update dynamic state in callback before input action.
+    /// @brief updates target based on a 2D coordinate grid to update dynamic state in callback before input action.
+    /// Should be used in callback before input maps for inputs mapped to dynamic targets.
     /// @tparam Rows rows of the coordinate grid.
     /// @tparam Cols columns of the coordinate grid.
-    /// @param coordinates coordinate grid.
-    /// @param newCoordinates to be updated by the function.
+    /// @param target typically a pair of coordinates.
+    /// @param newTarget to be updated by the function.
     /// @param rowIndex current row index in the grid. To be updated by the function.
     /// @param columnIndex current column index in the grid. To be updated by the function.
-    /// @param button input button to determine the next target
-    /// @return true if a mouse target update was made and thus a mouse move call should be made.
-    template <size_t Rows, size_t Cols>
-    bool computeGridBasedMouseTarget(
-        const std::array<std::array<std::pair<int, int>, Cols>, Rows> &coordinates,
-        std::pair<int, int> &newCoordinates, int &rowIndex, int &columnIndex, const int button) const;
+    /// @param button input button to determine the next target in the grid.
+    /// @return true if a target update was made and thus a call should be made.
+    template <typename Target, size_t Rows, size_t Cols>
+    bool computeGridBasedTarget(
+        const std::array<std::array<Target, Cols>, Rows> &target,
+        Target &newTarget, int &rowIndex, int &columnIndex, const int button) const;
 
   private:
     const std::unordered_map<int, DWORD> BUTTON_ID_TO_PRESS_EVENT = {

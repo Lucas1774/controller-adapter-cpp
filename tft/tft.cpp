@@ -116,16 +116,16 @@ static bool updateAbstractState(const int button, State &state, BufferState &buf
 
     static const std::map<MouseMovementWithPadMode, std::function<bool()>> modeToFunction = {
         {MouseMovementWithPadMode::ITEMS, [&functions, &state, &button]() {
-             return functions.computeGridBasedMouseTarget(ITEM_COORDINATES, state.mouseTarget, state.itemRow, state.itemColumn, button);
+             return functions.computeGridBasedTarget(ITEM_COORDINATES, state.mouseTarget, state.itemRow, state.itemColumn, button);
          }},
         {MouseMovementWithPadMode::SHOP, [&functions, &state, &button]() {
-             return functions.computeGridBasedMouseTarget(SHOP_COORDINATES, state.mouseTarget, state.shopRow, state.shopColumn, button);
+             return functions.computeGridBasedTarget(SHOP_COORDINATES, state.mouseTarget, state.shopRow, state.shopColumn, button);
          }},
         {MouseMovementWithPadMode::CARDS, [&functions, &state, &button]() {
-             return functions.computeGridBasedMouseTarget(CARD_COORDINATES, state.mouseTarget, state.cardRow, state.cardColumn, button);
+             return functions.computeGridBasedTarget(CARD_COORDINATES, state.mouseTarget, state.cardRow, state.cardColumn, button);
          }},
         {MouseMovementWithPadMode::LOCK, [&functions, &state, &button]() {
-             return functions.computeAdjacencyMatrixBasedMouseTarget(LOCK_ADJACENCY_MATRIX, LOCK_COORDINATES, state.mouseTarget, state.lockIndex, button);
+             return functions.computeAdjacencyMatrixBasedTarget(LOCK_ADJACENCY_MATRIX, LOCK_COORDINATES, state.mouseTarget, state.lockIndex, button);
          }}};
 
     if (auto it = modeToFunction.find(state.mode); it != modeToFunction.end()) {

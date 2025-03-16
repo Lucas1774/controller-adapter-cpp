@@ -28,7 +28,7 @@ static bool updateAbstractState(const int button, State &state, BufferState &buf
     if (!functions.isBufferFree(200, 50, button, bufferState)) {
         return false;
     }
-    return functions.computeAdjacencyMatrixBasedMouseTarget(CARD_ADJACENCY_MATRIX, CARD_COORDINATES, state.mouseTarget, state.cardIndex, button);
+    return functions.computeAdjacencyMatrixBasedTarget(CARD_ADJACENCY_MATRIX, CARD_COORDINATES, state.mouseTarget, state.cardIndex, button);
 }
 
 void run(std::unordered_map<int, int> &buttonState,

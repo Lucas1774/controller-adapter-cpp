@@ -1,24 +1,24 @@
 #include "funcs.h"
 
-template <size_t Elements>
-bool Functions::computeAdjacencyMatrixBasedMouseTarget(
+template <typename Target, size_t Elements>
+bool Functions::computeAdjacencyMatrixBasedTarget(
     const std::array<std::array<int, Elements>, Elements> &adjacencyMatrix,
-    const std::array<std::pair<int, int>, Elements> &coordinates,
-    std::pair<int, int> &newCoordinates, int &index, const int button) const {
+    const std::array<Target, Elements> &targets,
+    Target &newTargets, int &index, const int button) const {
     for (int i = 0; i < Elements; ++i) {
         if (adjacencyMatrix[index][i] == button) {
             index = i;
-            newCoordinates = coordinates[i];
+            newTargets = targets[i];
             return true;
         }
     }
     return false;
 }
 
-template <size_t Rows, size_t Cols>
-bool Functions::computeGridBasedMouseTarget(
-    const std::array<std::array<std::pair<int, int>, Cols>, Rows> &coordinates,
-    std::pair<int, int> &newCoordinates, int &rowIndex, int &columnIndex, const int button) const {
+template <typename Target, size_t Rows, size_t Cols>
+bool Functions::computeGridBasedTarget(
+    const std::array<std::array<Target, Cols>, Rows> &targets,
+    Target &newTargets, int &rowIndex, int &columnIndex, const int button) const {
     switch (button) {
     case PAD_UP:
         if (1 == Rows) {
@@ -44,9 +44,10 @@ bool Functions::computeGridBasedMouseTarget(
         }
         columnIndex = (columnIndex + 1) % Cols;
         break;
-    default:
+    default: // go to the next target. Hacky but handy. The correct way would be to define a normal adjacency map.
+        columnIndex = (columnIndex + 1) % Cols;
         break;
     }
-    newCoordinates = coordinates[rowIndex][columnIndex];
+    newTargets = targets[rowIndex][columnIndex];
     return true;
 }
