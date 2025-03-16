@@ -282,16 +282,16 @@ void Functions::updateJoystickAsAnalog(SDL_Joystick *joystick, Joystick &meta, c
 
 bool Functions::isBufferFree(const int second_input_delay_mills, const int subsequent_inputs_delay_millis, const int &button, BufferState &bufferState) const {
     auto now = std::chrono::steady_clock::now();
-    if (now - bufferState.last_executed <= std::chrono::milliseconds(subsequent_inputs_delay_millis)) {
+    if (now - bufferState.lastExecuted <= std::chrono::milliseconds(subsequent_inputs_delay_millis)) {
         return false;
-    } else if (!bufferState.is_unleashed && now - bufferState.last_pressed <= std::chrono::milliseconds(second_input_delay_mills)) {
+    } else if (!bufferState.isUnleashed && now - bufferState.lastPressed <= std::chrono::milliseconds(second_input_delay_mills)) {
         return false;
     } else {
-        bufferState.last_executed = now;
+        bufferState.lastExecuted = now;
         const int state = buttonState->at(button);
-        bufferState.is_unleashed = (state == PRESSED);
+        bufferState.isUnleashed = (state == PRESSED);
         if (state == JUST_PRESSED) {
-            bufferState.last_pressed = now;
+            bufferState.lastPressed = now;
         }
         return true;
     }

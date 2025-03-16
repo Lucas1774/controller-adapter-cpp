@@ -64,9 +64,9 @@ void run(std::unordered_map<int, int> &buttonState,
         .cardIndex = 1,
         .mouseTarget = {}};
     BufferState bufferState = {
-        .last_pressed = now,
-        .last_executed = now,
-        .is_unleashed = false};
+        .lastPressed = now,
+        .lastExecuted = now,
+        .isUnleashed = false};
 
     const auto TURBO_INPUTS = std::unordered_set<int>{PAD_LEFT, PAD_RIGHT, PAD_UP, PAD_DOWN};
     const auto INPUT_TO_KEY_TAP = std::unordered_map<int, std::function<WORD()>>{

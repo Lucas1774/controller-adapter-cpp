@@ -33,7 +33,7 @@ struct State {
     int lockIndex;
     MouseMovementWithPadMode mode;
     MouseMovementWithPadMode previous_mode;
-    std::pair<int, int> mouse_target;
+    std::pair<int, int> mouseTarget;
 };
 
 static constexpr std::array<std::pair<int, int>, 8> MOVE_COORDINATES = {
@@ -82,7 +82,7 @@ static bool updateAbstractState(const int button, State &state, BufferState &buf
         state.mode = MouseMovementWithPadMode::BOARD;
         state.boardRow = 0;
         state.boardColumn = 0;
-        state.mouse_target = BOARD_COORDINATES[0][0];
+        state.mouseTarget = BOARD_COORDINATES[0][0];
         return true;
     }
 
@@ -110,22 +110,22 @@ static bool updateAbstractState(const int button, State &state, BufferState &buf
                 state.boardColumn = (state.boardColumn + 1) % 9;
             }
         }
-        state.mouse_target = BOARD_COORDINATES[state.boardRow][state.boardColumn];
+        state.mouseTarget = BOARD_COORDINATES[state.boardRow][state.boardColumn];
         return true;
     }
 
     static const std::map<MouseMovementWithPadMode, std::function<bool()>> modeToFunction = {
         {MouseMovementWithPadMode::ITEMS, [&functions, &state, &button]() {
-             return functions.computeGridBasedMouseTarget(ITEM_COORDINATES, state.mouse_target, state.itemRow, state.itemColumn, button);
+             return functions.computeGridBasedMouseTarget(ITEM_COORDINATES, state.mouseTarget, state.itemRow, state.itemColumn, button);
          }},
         {MouseMovementWithPadMode::SHOP, [&functions, &state, &button]() {
-             return functions.computeGridBasedMouseTarget(SHOP_COORDINATES, state.mouse_target, state.shopRow, state.shopColumn, button);
+             return functions.computeGridBasedMouseTarget(SHOP_COORDINATES, state.mouseTarget, state.shopRow, state.shopColumn, button);
          }},
         {MouseMovementWithPadMode::CARDS, [&functions, &state, &button]() {
-             return functions.computeGridBasedMouseTarget(CARD_COORDINATES, state.mouse_target, state.cardRow, state.cardColumn, button);
+             return functions.computeGridBasedMouseTarget(CARD_COORDINATES, state.mouseTarget, state.cardRow, state.cardColumn, button);
          }},
         {MouseMovementWithPadMode::LOCK, [&functions, &state, &button]() {
-             return functions.computeAdjacencyMatrixBasedMouseTarget(LOCK_ADJACENCY_MATRIX, LOCK_COORDINATES, state.mouse_target, state.lockIndex, button);
+             return functions.computeAdjacencyMatrixBasedMouseTarget(LOCK_ADJACENCY_MATRIX, LOCK_COORDINATES, state.mouseTarget, state.lockIndex, button);
          }}};
 
     if (auto it = modeToFunction.find(state.mode); it != modeToFunction.end()) {
@@ -162,11 +162,11 @@ void run(std::unordered_map<int, int> &buttonState,
         .lockIndex = 0,
         .mode = MouseMovementWithPadMode::BOARD,
         .previous_mode = MouseMovementWithPadMode::BOARD,
-        .mouse_target = {}};
+        .mouseTarget = {}};
     BufferState buffer_state = {
-        .last_pressed = now,
-        .last_executed = now,
-        .is_unleashed = false};
+        .lastPressed = now,
+        .lastExecuted = now,
+        .isUnleashed = false};
 
     const auto TURBO_INPUTS = std::unordered_set<int>{PAD_LEFT, PAD_RIGHT, PAD_UP, PAD_DOWN};
     const auto INPUT_TO_KEY_TAP = std::unordered_map<int, std::function<WORD()>>{
@@ -181,18 +181,18 @@ void run(std::unordered_map<int, int> &buttonState,
         {SELECT, [] { return SDL_BUTTON_RIGHT; }}};
 
     const auto INPUT_TO_MOUSE_MOVE = std::unordered_map<int, std::function<std::pair<int, int>()>>{
-        {PAD_LEFT, [&state] { return state.mouse_target; }},
-        {PAD_RIGHT, [&state] { return state.mouse_target; }},
-        {PAD_UP, [&state] { return state.mouse_target; }},
-        {PAD_DOWN, [&state] { return state.mouse_target; }},
-        {R1, [&state] { return state.mouse_target; }},
-        {L1, [&state] { return state.mouse_target; }},
-        {R3, [&state] { return state.mouse_target; }},
-        {L3, [&state] { return state.mouse_target; }}};
+        {PAD_LEFT, [&state] { return state.mouseTarget; }},
+        {PAD_RIGHT, [&state] { return state.mouseTarget; }},
+        {PAD_UP, [&state] { return state.mouseTarget; }},
+        {PAD_DOWN, [&state] { return state.mouseTarget; }},
+        {R1, [&state] { return state.mouseTarget; }},
+        {L1, [&state] { return state.mouseTarget; }},
+        {R3, [&state] { return state.mouseTarget; }},
+        {L3, [&state] { return state.mouseTarget; }}};
 
     const auto RELEASE_TO_MOUSE_MOVE = std::unordered_map<int, std::function<std::pair<int, int>()>>{
-        {R1, [&state] { return state.mouse_target; }},
-        {L1, [&state] { return state.mouse_target; }}};
+        {R1, [&state] { return state.mouseTarget; }},
+        {L1, [&state] { return state.mouseTarget; }}};
 
     const auto INPUT_TO_LOGIC_BEFORE = std::unordered_map<int, std::function<bool()>>{
         {PAD_LEFT, [&functions, &state, &buffer_state]() {
@@ -237,25 +237,25 @@ void run(std::unordered_map<int, int> &buttonState,
                 // for item and board mode toggling, we remember positions to make it easier to build full items
                 if (buttonState[L1] == JUST_PRESSED) {
                     state.mode = MouseMovementWithPadMode::ITEMS;
-                    state.mouse_target = ITEM_COORDINATES[state.itemColumn][state.itemRow];
+                    state.mouseTarget = ITEM_COORDINATES[state.itemColumn][state.itemRow];
                 } else if (buttonState[L1] == JUST_RELEASED) {
                     state.mode = MouseMovementWithPadMode::BOARD;
-                    state.mouse_target = BOARD_COORDINATES[state.boardRow][state.boardColumn];
+                    state.mouseTarget = BOARD_COORDINATES[state.boardRow][state.boardColumn];
                     // for shop and board mode toggling, we always go to bench and to middle card, that is also the "show own board" button location
                     // we don't necessarily go back to board mode. If card mode was set as "previous", we go there.
                     // the idea is to easily show the board when going to pick a card, without leaving card selecting mode
                 } else if (buttonState[R1] == JUST_PRESSED) {
                     state.mode = MouseMovementWithPadMode::SHOP;
                     state.shopColumn = 2;
-                    state.mouse_target = SHOP_COORDINATES[0][state.shopColumn];
+                    state.mouseTarget = SHOP_COORDINATES[0][state.shopColumn];
                 } else if (buttonState[R1] == JUST_RELEASED) {
                     state.mode = state.previous_mode;
                     if (state.mode == MouseMovementWithPadMode::BOARD) {
                         state.boardRow = 0;
                         state.boardColumn = 0;
-                        state.mouse_target = BOARD_COORDINATES[0][0];
+                        state.mouseTarget = BOARD_COORDINATES[0][0];
                     } else if (state.mode == MouseMovementWithPadMode::CARDS) {
-                        state.mouse_target = CARD_COORDINATES[state.cardRow][state.cardColumn];
+                        state.mouseTarget = CARD_COORDINATES[state.cardRow][state.cardColumn];
                     }
                     // for card and board mode toggling, we also go to the bench when going to board mode, and to the middle when going to card mode, because why not
                     // we save the state in previous state in case we want to go to item state after.
@@ -265,13 +265,13 @@ void run(std::unordered_map<int, int> &buttonState,
                         state.previous_mode = MouseMovementWithPadMode::BOARD;
                         state.boardRow = 0;
                         state.boardColumn = 0;
-                        state.mouse_target = BOARD_COORDINATES[0][0];
+                        state.mouseTarget = BOARD_COORDINATES[0][0];
                     } else {
                         state.mode = MouseMovementWithPadMode::CARDS;
                         state.previous_mode = MouseMovementWithPadMode::CARDS;
                         state.cardRow = 0;
                         state.cardColumn = 1;
-                        state.mouse_target = CARD_COORDINATES[state.cardRow][state.cardColumn];
+                        state.mouseTarget = CARD_COORDINATES[state.cardRow][state.cardColumn];
                     }
                     // for lock and board mode toggling, also to bench for convenience, and also always to lock
                 } else if (buttonState[L3] == JUST_PRESSED) {
@@ -279,11 +279,11 @@ void run(std::unordered_map<int, int> &buttonState,
                         state.mode = MouseMovementWithPadMode::BOARD;
                         state.boardRow = 0;
                         state.boardColumn = 0;
-                        state.mouse_target = BOARD_COORDINATES[0][0];
+                        state.mouseTarget = BOARD_COORDINATES[0][0];
                     } else {
                         state.mode = MouseMovementWithPadMode::LOCK;
                         state.lockIndex = 0;
-                        state.mouse_target = LOCK_COORDINATES[state.lockIndex];
+                        state.mouseTarget = LOCK_COORDINATES[state.lockIndex];
                     }
                 }
 
@@ -320,8 +320,8 @@ void run(std::unordered_map<int, int> &buttonState,
                     }
                 } else if (leftJoystick.isXActive || leftJoystick.isYActive) { // leftJoystick isActive breaks the program semantics:
                                                                                // The joystick has been "digitalized", however, the param is at hand and improves performance, so might as well use it.
-                    state.mouse_target = MOVE_COORDINATES[functions.generateAxisTargetWithBitMask(LEFT_JS)];
-                    functions.moveMouse(state.mouse_target.first, state.mouse_target.second, resScalingX, resScalingY);
+                    state.mouseTarget = MOVE_COORDINATES[functions.generateAxisTargetWithBitMask(LEFT_JS)];
+                    functions.moveMouse(state.mouseTarget.first, state.mouseTarget.second, resScalingX, resScalingY);
                     if (std::chrono::steady_clock::now() - lastUpdateTime > std::chrono::milliseconds(100)) {
                         functions.click(SDL_BUTTON_RIGHT);
                         lastUpdateTime = std::chrono::steady_clock::now();

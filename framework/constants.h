@@ -80,9 +80,9 @@ enum ButtonState {
 };
 
 struct BufferState {
-    std::chrono::steady_clock::time_point last_pressed;
-    std::chrono::steady_clock::time_point last_executed;
-    bool is_unleashed;
+    std::chrono::steady_clock::time_point lastPressed;
+    std::chrono::steady_clock::time_point lastExecuted;
+    bool isUnleashed;
 };
 
 const std::unordered_set<int> PRESSED_STATES = {PRESSED, JUST_PRESSED};

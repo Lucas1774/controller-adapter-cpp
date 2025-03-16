@@ -24,7 +24,7 @@ struct State {
     int drawRow;
     int drawColumn;
     Mode mode;
-    std::pair<int, int> mouse_target;
+    std::pair<int, int> mouseTarget;
 };
 
 static constexpr std::array<std::array<std::pair<int, int>, 8>, 8> BOARD_COORDINATES = {
@@ -55,13 +55,13 @@ static bool updateAbstractState(const int button, State &state, BufferState &buf
 
     static const std::map<Mode, std::function<bool()>> modeToFunction = {
         {Mode::BOARD, [&functions, &state, &button]() {
-             return functions.computeGridBasedMouseTarget(BOARD_COORDINATES, state.mouse_target, state.boardRow, state.boardColumn, button);
+             return functions.computeGridBasedMouseTarget(BOARD_COORDINATES, state.mouseTarget, state.boardRow, state.boardColumn, button);
          }},
         {Mode::RESIGN, [&functions, &state, &button]() {
-             return functions.computeGridBasedMouseTarget(RESIGN_YES_NO, state.mouse_target, state.resignRow, state.resignColumn, button);
+             return functions.computeGridBasedMouseTarget(RESIGN_YES_NO, state.mouseTarget, state.resignRow, state.resignColumn, button);
          }},
         {Mode::DRAW, [&functions, &state, &button]() {
-             return functions.computeGridBasedMouseTarget(DRAW_YES_NO, state.mouse_target, state.drawRow, state.drawColumn, button);
+             return functions.computeGridBasedMouseTarget(DRAW_YES_NO, state.mouseTarget, state.drawRow, state.drawColumn, button);
          }}};
 
     if (auto it = modeToFunction.find(state.mode); it != modeToFunction.end()) {
@@ -90,18 +90,18 @@ void run(std::unordered_map<int, int> &buttonState,
         .drawRow = 0,
         .drawColumn = 0,
         .mode = Mode::BOARD,
-        .mouse_target = {}};
+        .mouseTarget = {}};
     BufferState bufferState = {
-        .last_pressed = now,
-        .last_executed = now,
-        .is_unleashed = false};
+        .lastPressed = now,
+        .lastExecuted = now,
+        .isUnleashed = false};
 
     const auto TURBO_INPUTS = std::unordered_set<int>{PAD_LEFT, PAD_RIGHT, PAD_UP, PAD_DOWN};
     const auto INPUT_TO_MOUSE_MOVE = std::unordered_map<int, std::function<std::pair<int, int>()>>{
-        {PAD_LEFT, [&programState]() { return programState.mouse_target; }},
-        {PAD_RIGHT, [&programState]() { return programState.mouse_target; }},
-        {PAD_UP, [&programState]() { return programState.mouse_target; }},
-        {PAD_DOWN, [&programState]() { return programState.mouse_target; }}};
+        {PAD_LEFT, [&programState]() { return programState.mouseTarget; }},
+        {PAD_RIGHT, [&programState]() { return programState.mouseTarget; }},
+        {PAD_UP, [&programState]() { return programState.mouseTarget; }},
+        {PAD_DOWN, [&programState]() { return programState.mouseTarget; }}};
     const auto INPUT_TO_BUTTON_CLICK = std::unordered_map<int, std::function<int()>>{
         {B, []() { return SDL_BUTTON_RIGHT; }},
         {R1, []() { return SDL_BUTTON_LEFT; }},
