@@ -10,15 +10,15 @@
 class Functions {
   public:
     void setMaps(std::unordered_map<int, int> *buttonState,
-                 const std::unordered_map<int, std::pair<int, int> *> *input_to_mouse_move,
-                 const std::unordered_map<int, std::pair<int, int> *> *release_to_mouse_move,
-                 const std::unordered_map<int, int> *input_to_mouse_click,
-                 const std::unordered_map<int, int> *release_to_mouse_click,
-                 const std::unordered_map<int, int> *input_to_button_toggle,
-                 const std::unordered_map<int, int> *release_to_button_toggle,
-                 const std::unordered_map<int, WORD> *input_to_key_tap,
-                 const std::unordered_map<int, WORD> *release_to_key_tap,
-                 const std::unordered_map<int, WORD> *input_to_key_hold,
+                 const std::unordered_map<int, std::function<std::pair<int, int>()>> *input_to_mouse_move,
+                 const std::unordered_map<int, std::function<std::pair<int, int>()>> *release_to_mouse_move,
+                 const std::unordered_map<int, std::function<int()>> *input_to_mouse_click,
+                 const std::unordered_map<int, std::function<int()>> *release_to_mouse_click,
+                 const std::unordered_map<int, std::function<int()>> *input_to_button_toggle,
+                 const std::unordered_map<int, std::function<int()>> *release_to_button_toggle,
+                 const std::unordered_map<int, std::function<WORD()>> *input_to_key_tap,
+                 const std::unordered_map<int, std::function<WORD()>> *release_to_key_tap,
+                 const std::unordered_map<int, std::function<WORD()>> *input_to_key_hold,
                  const std::unordered_map<int, std::function<bool()>> *input_to_logic_before,
                  const std::unordered_map<int, std::function<bool()>> *input_to_logic_after,
                  const std::unordered_map<int, std::function<bool()>> *release_to_logic_before,
@@ -45,55 +45,32 @@ class Functions {
     /// @param eventType to match for the mouse to move to the mapped location. Can be any.
     void handleToMouseAbsoluteMove(const int &input, const int eventType, const double resScalingX, const double resScalingY) const;
 
-    /// @brief clicks the button defined in input_to_mouse_click or release_to_mouse_click map if the input state matches eventType.
-    /// Can execute callbacks if defined in the corresponding logic before/after maps. Before callback is boolean and can stop the action.
-    /// @param input controller button linked to the click and key in the map.
-    /// @param eventType to match for the mapped mouse button to be clicked. Can be any.
-    void handleToClick(const int &input, const int eventType) const;
-
     /// @brief  clicks the button if the input state matches eventType.
     /// Can execute callbacks if defined in the corresponding logic before/after maps. Before callback is boolean and can stop the action.
     /// @param input controller button linked to the click.
-    /// @param button mouse button to click.
     /// @param eventType to match for the mouse button to be clicked. Can be any.
-    void handleToClick(const int &input, const int button, const int eventType) const;
-
-    /// @brief toggles the button defined in input_to_button_toggle or release_to_button_toggle map if the input state matches eventType.
-    /// Can execute callbacks if defined in the corresponding logic before/after maps. Before callback is boolean and can stop the action.
-    /// @param input controller button linked to the click and key in the map.
-    /// @param eventType to match for the mapped mouse button to be toggled. Can be any.
-    void handleToButtonToggle(const int &input, const int eventType) const;
+    /// @param button mouse button to click. If none is provided it will be obtained from the corresponding maps. 
+    void handleToClick(const int &input, const int eventType, const int button = -1) const;
 
     /// @brief toggles the button if the input state matches eventType.
     /// Can execute callbacks if defined in the corresponding logic before/after maps. Before callback is boolean and can stop the action.
     /// @param input controller button linked to the mouse button toggle.
-    /// @param button mouse button to toggle.
     /// @param eventType to match for the mouse button to be toggled. Can be any.
-    void handleToButtonToggle(const int &input, const int button, const int eventType) const;
-
-    /// @brief taps the key defined in input_to_key_tap or release_to_key_tap map if the input state matches eventType.
-    /// Can execute callbacks if defined in the corresponding logic before/after maps. Before callback is boolean and can stop the action.
-    /// @param input controller button linked to the key tap and key in the map.
-    /// @param eventType to match for the mapped key to be tapped. Can be any.
-    void handleToKeyTap(const int &input, const int eventType) const;
+    /// @param button mouse button to toggle. If none is provided it will be obtained from the corresponding maps. 
+    void handleToButtonToggle(const int &input, const int eventType, const int button = -1) const;
 
     /// @brief taps the key if the input state matches eventType.
     /// Can execute callbacks if defined in the corresponding logic before/after maps. Before callback is boolean and can stop the action.
     /// @param input controller button linked to the key tap.
-    /// @param key key to tap.
     /// @param eventType to match for the key to be tapped. Can be any.
-    void handleToKeyTap(const int &input, const int key, const int eventType) const;
-
-    /// @brief holds the key defined in input_to_key_hold map while the input stays pressed.
-    /// Can execute callbacks if defined in the corresponding logic before/after maps. Before callback is boolean and can stop the action.
-    /// @param input controller button linked to the key hold and key in the map.
-    void handleToKeyHold(const int &input) const;
+    /// @param key key to tap. If none is provided it will be obtained from the corresponding maps. 
+    void handleToKeyTap(const int &input, const int eventType, const int key = -1) const;
 
     /// @brief holds the key while the input stays pressed.
     /// Can execute callbacks if defined in the corresponding logic before/after maps. Before callback is boolean and can stop the action.
     /// @param input controller button linked to the key hold.
-    /// @param key key to hold.
-    void handleToKeyHold(const int &input, const int key) const;
+    /// @param key key to hold. If none is provided it will be obtained from the corresponding maps. 
+    void handleToKeyHold(const int &input, const int key = -1) const;
 
     /// @brief looks for activate button press to start the program. The activate button can be mapped in the config file.
     /// @param events event pool.
@@ -154,8 +131,7 @@ class Functions {
     bool computeAdjacencyMatrixBasedMouseTarget(
         const std::array<std::array<int, Elements>, Elements> &adjacencyMatrix,
         const std::array<std::pair<int, int>, Elements> &coordinates,
-        std::pair<int, int> &newCoordinates, int &index, const int button,
-        const double resScalingX, const double resScalingY) const;
+        std::pair<int, int> &newCoordinates, int &index, const int button) const;
 
     /// @brief returns coordinates for a mouse target based on a 2D coordinate grid to update dynamic state in callback before input action.
     /// @tparam Rows rows of the coordinate grid.
@@ -169,8 +145,7 @@ class Functions {
     template <size_t Rows, size_t Cols>
     bool computeGridBasedMouseTarget(
         const std::array<std::array<std::pair<int, int>, Cols>, Rows> &coordinates,
-        std::pair<int, int> &newCoordinates, int &rowIndex, int &columnIndex, const int button,
-        const double resScalingX, const double resScalingY) const;
+        std::pair<int, int> &newCoordinates, int &rowIndex, int &columnIndex, const int button) const;
 
   private:
     const std::unordered_map<int, DWORD> BUTTON_ID_TO_PRESS_EVENT = {
@@ -188,15 +163,15 @@ class Functions {
     void pressThenRelease(const int key_to_tap, const std::function<void()> &callback = nullptr) const;
     void handleState(int &state, const bool is_pressed) const;
     std::unordered_map<int, int> *buttonState;
-    const std::unordered_map<int, std::pair<int, int> *> *input_to_mouse_move;
-    const std::unordered_map<int, std::pair<int, int> *> *release_to_mouse_move;
-    const std::unordered_map<int, int> *input_to_mouse_click;
-    const std::unordered_map<int, int> *release_to_mouse_click;
-    const std::unordered_map<int, int> *input_to_button_toggle;
-    const std::unordered_map<int, int> *release_to_button_toggle;
-    const std::unordered_map<int, WORD> *input_to_key_tap;
-    const std::unordered_map<int, WORD> *release_to_key_tap;
-    const std::unordered_map<int, WORD> *input_to_key_hold;
+    const std::unordered_map<int, std::function<std::pair<int, int>()>> *input_to_mouse_move;
+    const std::unordered_map<int, std::function<std::pair<int, int>()>> *release_to_mouse_move;
+    const std::unordered_map<int, std::function<int()>> *input_to_mouse_click;
+    const std::unordered_map<int, std::function<int()>> *release_to_mouse_click;
+    const std::unordered_map<int, std::function<int()>> *input_to_button_toggle;
+    const std::unordered_map<int, std::function<int()>> *release_to_button_toggle;
+    const std::unordered_map<int, std::function<WORD()>> *input_to_key_tap;
+    const std::unordered_map<int, std::function<WORD()>> *release_to_key_tap;
+    const std::unordered_map<int, std::function<WORD()>> *input_to_key_hold;
     const std::unordered_map<int, std::function<bool()>> *input_to_logic_before;
     const std::unordered_map<int, std::function<bool()>> *input_to_logic_after;
     const std::unordered_map<int, std::function<bool()>> *release_to_logic_before;

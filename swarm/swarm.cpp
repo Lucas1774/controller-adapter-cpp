@@ -24,11 +24,11 @@ static constexpr std::array<std::array<int, 4>, 4> CARD_ADJACENCY_MATRIX = {
      {PAD_RIGHT, PAD_LEFT, NONE, PAD_DOWN}, // right
      {PAD_LEFT, PAD_UP, PAD_RIGHT, NONE}}}; // reroll
 
-static bool updateAbstractState(const int button, State &state, BufferState &bufferState, const double resScalingX, const double resScalingY, const Functions &functions) {
+static bool updateAbstractState(const int button, State &state, BufferState &bufferState, const Functions &functions) {
     if (!functions.isBufferFree(200, 50, button, bufferState)) {
         return false;
     }
-    return functions.computeAdjacencyMatrixBasedMouseTarget(CARD_ADJACENCY_MATRIX, CARD_COORDINATES, state.mouseTarget, state.cardIndex, button, resScalingX, resScalingY);
+    return functions.computeAdjacencyMatrixBasedMouseTarget(CARD_ADJACENCY_MATRIX, CARD_COORDINATES, state.mouseTarget, state.cardIndex, button);
 }
 
 void run(std::unordered_map<int, int> &buttonState,
@@ -59,7 +59,6 @@ void run(std::unordered_map<int, int> &buttonState,
     const double resScalingX = screenWidth / 1920.0;
     const double resScalingY = screenHeight / 1080.0;
     const auto now = std::chrono::steady_clock::now();
-    std::pair<int, int> center = CENTER;
 
     State state = {
         .cardIndex = 1,
@@ -70,35 +69,39 @@ void run(std::unordered_map<int, int> &buttonState,
         .is_unleashed = false};
 
     const auto TURBO_INPUTS = std::unordered_set<int>{PAD_LEFT, PAD_RIGHT, PAD_UP, PAD_DOWN};
-    const auto INPUT_TO_KEY_TAP = std::unordered_map<int, WORD>{{START, VK_ESCAPE}, {X, 'C'}, {Y, 'O'}};
-    const auto INPUT_TO_KEY_HOLD = std::unordered_map<int, WORD>{
-        {LEFT_JS_LEFT, 'A'},
-        {LEFT_JS_RIGHT, 'D'},
-        {LEFT_JS_UP, 'W'},
-        {LEFT_JS_DOWN, 'S'},
-        {B, VK_TAB},
-        {R2, 'T'},
-    };
-    const auto INPUT_TO_MOUSE_MOVE = std::unordered_map<int, std::pair<int, int> *>{
-        {PAD_LEFT, &state.mouseTarget},
-        {PAD_RIGHT, &state.mouseTarget},
-        {PAD_UP, &state.mouseTarget},
-        {PAD_DOWN, &state.mouseTarget},
-        {R3, &center},
-    };
-    const auto INPUT_TO_MOUSE_CLICK = std::unordered_map<int, int>{{A, SDL_BUTTON_LEFT}};
-    const auto RELEASE_TO_KEY_TAP = std::unordered_map<int, WORD>{{R1, 'R'}, {L1, 'E'}};
+    const auto INPUT_TO_KEY_TAP = std::unordered_map<int, std::function<WORD()>>{
+        {START, [] { return VK_ESCAPE; }},
+        {X, [] { return 'C'; }},
+        {Y, [] { return 'O'; }}};
+    const auto INPUT_TO_KEY_HOLD = std::unordered_map<int, std::function<WORD()>>{
+        {LEFT_JS_LEFT, [] { return 'A'; }},
+        {LEFT_JS_RIGHT, [] { return 'D'; }},
+        {LEFT_JS_UP, [] { return 'W'; }},
+        {LEFT_JS_DOWN, [] { return 'S'; }},
+        {B, [] { return VK_TAB; }},
+        {R2, [] { return 'T'; }}};
+    const auto INPUT_TO_MOUSE_MOVE = std::unordered_map<int, std::function<std::pair<int, int>()>>{
+        {PAD_LEFT, [&state] { return state.mouseTarget; }},
+        {PAD_RIGHT, [&state] { return state.mouseTarget; }},
+        {PAD_UP, [&state] { return state.mouseTarget; }},
+        {PAD_DOWN, [&state] { return state.mouseTarget; }},
+        {R3, [] { return CENTER; }}};
+    const auto INPUT_TO_MOUSE_CLICK = std::unordered_map<int, std::function<int()>>{
+        {A, [] { return SDL_BUTTON_LEFT; }}};
+    const auto RELEASE_TO_KEY_TAP = std::unordered_map<int, std::function<WORD()>>{
+        {R1, [] { return 'R'; }},
+        {L1, [] { return 'E'; }}};
     const auto INPUT_TO_LOGIC_BEFORE = std::unordered_map<int, std::function<bool()>>{
-        {R2, [&]() { functions.moveMouse(CENTER_X, CENTER_Y, resScalingX, resScalingY); return true; }},
-        {R3, [&]() { highPrecisionAlwaysOn = !highPrecisionAlwaysOn; return true; }},
-        {PAD_LEFT, [&]() { return updateAbstractState(PAD_LEFT, state, bufferState, resScalingX, resScalingY, functions); }},
-        {PAD_RIGHT, [&]() { return updateAbstractState(PAD_RIGHT, state, bufferState, resScalingX, resScalingY, functions); }},
-        {PAD_UP, [&]() { return updateAbstractState(PAD_UP, state, bufferState, resScalingX, resScalingY, functions); }},
-        {PAD_DOWN, [&]() { return updateAbstractState(PAD_DOWN, state, bufferState, resScalingX, resScalingY, functions); }},
+        {R2, [&functions, resScalingX, resScalingY]() { functions.moveMouse(CENTER_X, CENTER_Y, resScalingX, resScalingY); return true; }},
+        {R3, [&highPrecisionAlwaysOn]() { highPrecisionAlwaysOn = !highPrecisionAlwaysOn; return true; }},
+        {PAD_LEFT, [&functions, &state, &bufferState]() { return updateAbstractState(PAD_LEFT, state, bufferState, functions); }},
+        {PAD_RIGHT, [&functions, &state, &bufferState]() { return updateAbstractState(PAD_RIGHT, state, bufferState, functions); }},
+        {PAD_UP, [&functions, &state, &bufferState]() { return updateAbstractState(PAD_UP, state, bufferState, functions); }},
+        {PAD_DOWN, [&functions, &state, &bufferState]() { return updateAbstractState(PAD_DOWN, state, bufferState, functions); }},
     };
     const auto RELEASE_TO_LOGIC_AFTER = std::unordered_map<int, std::function<bool()>>{
-        {R1, [&]() { currentRadius = MAX_RADIUS_HIGH_PRECISION_OFF; return true; }},
-        {L1, [&]() { currentRadius = MAX_RADIUS_HIGH_PRECISION_OFF; return true; }},
+        {R1, [&currentRadius, MAX_RADIUS_HIGH_PRECISION_OFF]() { currentRadius = MAX_RADIUS_HIGH_PRECISION_OFF; return true; }},
+        {L1, [&currentRadius, MAX_RADIUS_HIGH_PRECISION_OFF]() { currentRadius = MAX_RADIUS_HIGH_PRECISION_OFF; return true; }},
     };
 
     functions.setMaps(&buttonState, &INPUT_TO_MOUSE_MOVE, nullptr, &INPUT_TO_MOUSE_CLICK, nullptr, nullptr, nullptr, &INPUT_TO_KEY_TAP, &RELEASE_TO_KEY_TAP, &INPUT_TO_KEY_HOLD, &INPUT_TO_LOGIC_BEFORE, nullptr, nullptr, &RELEASE_TO_LOGIC_AFTER);

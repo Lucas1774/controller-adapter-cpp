@@ -48,22 +48,20 @@ static constexpr std::pair<int, int> REMATCH = {1431, 536};
 static constexpr std::pair<int, int> RESIGN = {1177, 570};
 static constexpr std::pair<int, int> DRAW = {1163, 511};
 
-static bool updateAbstractState(const int button, State &state, BufferState &bufferState,
-                                const double resScalingX, const double resScalingY,
-                                const Functions &functions) {
+static bool updateAbstractState(const int button, State &state, BufferState &bufferState, const Functions &functions) {
     if (!functions.isBufferFree(200, 50, button, bufferState)) {
         return false;
     }
 
     static const std::map<Mode, std::function<bool()>> modeToFunction = {
-        {Mode::BOARD, [&]() {
-             return functions.computeGridBasedMouseTarget(BOARD_COORDINATES, state.mouse_target, state.boardRow, state.boardColumn, button, resScalingX, resScalingY);
+        {Mode::BOARD, [&functions, &state, &button]() {
+             return functions.computeGridBasedMouseTarget(BOARD_COORDINATES, state.mouse_target, state.boardRow, state.boardColumn, button);
          }},
-        {Mode::RESIGN, [&]() {
-             return functions.computeGridBasedMouseTarget(RESIGN_YES_NO, state.mouse_target, state.resignRow, state.resignColumn, button, resScalingX, resScalingY);
+        {Mode::RESIGN, [&functions, &state, &button]() {
+             return functions.computeGridBasedMouseTarget(RESIGN_YES_NO, state.mouse_target, state.resignRow, state.resignColumn, button);
          }},
-        {Mode::DRAW, [&]() {
-             return functions.computeGridBasedMouseTarget(DRAW_YES_NO, state.mouse_target, state.drawRow, state.drawColumn, button, resScalingX, resScalingY);
+        {Mode::DRAW, [&functions, &state, &button]() {
+             return functions.computeGridBasedMouseTarget(DRAW_YES_NO, state.mouse_target, state.drawRow, state.drawColumn, button);
          }}};
 
     if (auto it = modeToFunction.find(state.mode); it != modeToFunction.end()) {
@@ -99,30 +97,48 @@ void run(std::unordered_map<int, int> &buttonState,
         .is_unleashed = false};
 
     const auto TURBO_INPUTS = std::unordered_set<int>{PAD_LEFT, PAD_RIGHT, PAD_UP, PAD_DOWN};
-    const auto INPUT_TO_MOUSE_MOVE = std::unordered_map<int, std::pair<int, int> *>{
-        {PAD_LEFT, &programState.mouse_target},
-        {PAD_RIGHT, &programState.mouse_target},
-        {PAD_UP, &programState.mouse_target},
-        {PAD_DOWN, &programState.mouse_target}};
-    const auto INPUT_TO_BUTTON_CLICK = std::unordered_map<int, int>{{B, SDL_BUTTON_RIGHT}, {R1, SDL_BUTTON_LEFT}, {L1, SDL_BUTTON_LEFT}, {Y, SDL_BUTTON_LEFT}, {X, SDL_BUTTON_LEFT}};
-    const auto INPUT_TO_BUTTON_TOGGLE = std::unordered_map<int, int>{{A, SDL_BUTTON_LEFT}};
-    const auto RELEASE_TO_BUTTON_TOGGLE = std::unordered_map<int, int>{{A, SDL_BUTTON_LEFT}};
+    const auto INPUT_TO_MOUSE_MOVE = std::unordered_map<int, std::function<std::pair<int, int>()>>{
+        {PAD_LEFT, [&programState]() { return programState.mouse_target; }},
+        {PAD_RIGHT, [&programState]() { return programState.mouse_target; }},
+        {PAD_UP, [&programState]() { return programState.mouse_target; }},
+        {PAD_DOWN, [&programState]() { return programState.mouse_target; }}};
+    const auto INPUT_TO_BUTTON_CLICK = std::unordered_map<int, std::function<int()>>{
+        {B, []() { return SDL_BUTTON_RIGHT; }},
+        {R1, []() { return SDL_BUTTON_LEFT; }},
+        {L1, []() { return SDL_BUTTON_LEFT; }},
+        {Y, []() { return SDL_BUTTON_LEFT; }},
+        {X, []() { return SDL_BUTTON_LEFT; }}};
+    const auto INPUT_TO_BUTTON_TOGGLE = std::unordered_map<int, std::function<int()>>{{A, []() { return SDL_BUTTON_LEFT; }}};
+    const auto RELEASE_TO_BUTTON_TOGGLE = std::unordered_map<int, std::function<int()>>{{A, []() { return SDL_BUTTON_LEFT; }}};
     const auto INPUT_TO_LOGIC_BEFORE = std::unordered_map<int, std::function<bool()>>{
-        {L1, [&]() { functions.moveMouse(REMATCH.first,REMATCH.second, resScalingX, resScalingY); return true; }},
-        {R1, [&]() { functions.moveMouse(PLAY_AGAIN.first,PLAY_AGAIN.second, resScalingX, resScalingY); return true; }},
-        {X, [&]() { functions.moveMouse(DRAW.first,DRAW.second, resScalingX, resScalingY); return true; }},
-        {Y, [&]() { functions.moveMouse(RESIGN.first,RESIGN.second, resScalingX, resScalingY); return true; }},
-        {PAD_LEFT, [&]() { return updateAbstractState(PAD_LEFT, programState, bufferState, resScalingX, resScalingY, functions); }},
-        {PAD_RIGHT, [&]() { return updateAbstractState(PAD_RIGHT, programState, bufferState, resScalingX, resScalingY, functions); }},
-        {PAD_UP, [&]() { return updateAbstractState(PAD_UP, programState, bufferState, resScalingX, resScalingY, functions); }},
-        {PAD_DOWN, [&]() { return updateAbstractState(PAD_DOWN, programState, bufferState, resScalingX, resScalingY, functions); }},
+        {L1, [&functions, resScalingX, resScalingY]() { functions.moveMouse(REMATCH.first,REMATCH.second, resScalingX, resScalingY); return true; }},
+        {R1, [&functions, resScalingX, resScalingY]() { functions.moveMouse(PLAY_AGAIN.first,PLAY_AGAIN.second, resScalingX, resScalingY); return true; }},
+        {X, [&functions, resScalingX, resScalingY]() { functions.moveMouse(DRAW.first,DRAW.second, resScalingX, resScalingY); return true; }},
+        {Y, [&functions, resScalingX, resScalingY]() { functions.moveMouse(RESIGN.first,RESIGN.second, resScalingX, resScalingY); return true; }},
+        {PAD_LEFT, [&functions, &programState, &bufferState]() {
+             return updateAbstractState(PAD_LEFT, programState, bufferState, functions);
+         }},
+        {PAD_RIGHT, [&functions, &programState, &bufferState]() {
+             return updateAbstractState(PAD_RIGHT, programState, bufferState, functions);
+         }},
+        {PAD_UP, [&functions, &programState, &bufferState]() {
+             return updateAbstractState(PAD_UP, programState, bufferState, functions);
+         }},
+        {PAD_DOWN, [&functions, &programState, &bufferState]() {
+             return updateAbstractState(PAD_DOWN, programState, bufferState, functions);
+         }},
     };
     const auto INPUT_TO_LOGIC_AFTER = std::unordered_map<int, std::function<bool()>>{
-        {L1, [&]() { auto [x, y] = BOARD_COORDINATES[programState.boardRow][programState.boardColumn]; functions.moveMouse(x, y, resScalingX, resScalingY); return true; }},
-        {R1, [&]() { auto [x, y] = BOARD_COORDINATES[programState.boardRow][programState.boardColumn]; functions.moveMouse(x, y, resScalingX, resScalingY); return true; }},
-        {X, [&]() { programState.mode = Mode::DRAW; auto [x, y] = DRAW_YES_NO[0][programState.drawColumn]; functions.moveMouse(x, y, resScalingX, resScalingY); return true; }},
-        {Y, [&]() { programState.mode = Mode::RESIGN; auto [x, y] = RESIGN_YES_NO[0][programState.resignColumn]; functions.moveMouse(x, y, resScalingX, resScalingY); return true; }},
-        {A, [&]() { if (programState.mode != Mode::BOARD) {programState.mode = Mode::BOARD; programState.drawColumn = 0; programState.resignColumn = 0;} return true; }},
+        {L1, [&functions, &programState, resScalingX, resScalingY]() { auto [x, y] = BOARD_COORDINATES[programState.boardRow][programState.boardColumn];
+            functions.moveMouse(x, y, resScalingX, resScalingY); return true; }},
+        {R1, [&functions, &programState, resScalingX, resScalingY]() { auto [x, y] = BOARD_COORDINATES[programState.boardRow][programState.boardColumn];
+            functions.moveMouse(x, y, resScalingX, resScalingY); return true; }},
+        {X, [&functions, &programState, resScalingX, resScalingY]() { programState.mode = Mode::DRAW; auto [x, y] = DRAW_YES_NO[0][programState.drawColumn];
+            functions.moveMouse(x, y, resScalingX, resScalingY); return true; }},
+        {Y, [&functions, &programState, resScalingX, resScalingY]() { programState.mode = Mode::RESIGN; auto [x, y] = RESIGN_YES_NO[0][programState.resignColumn];
+            functions.moveMouse(x, y, resScalingX, resScalingY); return true; }},
+        {A, [&programState]() { if (programState.mode != Mode::BOARD) {programState.mode = Mode::BOARD; programState.drawColumn = 0; programState.resignColumn = 0;}
+        return true; }},
     };
 
     functions.setMaps(&buttonState, &INPUT_TO_MOUSE_MOVE, nullptr, &INPUT_TO_BUTTON_CLICK, nullptr, &INPUT_TO_BUTTON_TOGGLE, &RELEASE_TO_BUTTON_TOGGLE, nullptr, nullptr, nullptr, &INPUT_TO_LOGIC_BEFORE, &INPUT_TO_LOGIC_AFTER, nullptr, nullptr);

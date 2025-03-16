@@ -3,15 +3,15 @@
 #include <windows.h>
 
 void Functions::setMaps(std::unordered_map<int, int> *buttonState,
-                        const std::unordered_map<int, std::pair<int, int> *> *input_to_mouse_move,
-                        const std::unordered_map<int, std::pair<int, int> *> *release_to_mouse_move,
-                        const std::unordered_map<int, int> *input_to_mouse_click,
-                        const std::unordered_map<int, int> *release_to_mouse_click,
-                        const std::unordered_map<int, int> *input_to_button_toggle,
-                        const std::unordered_map<int, int> *release_to_button_toggle,
-                        const std::unordered_map<int, WORD> *input_to_key_tap,
-                        const std::unordered_map<int, WORD> *release_to_key_tap,
-                        const std::unordered_map<int, WORD> *input_to_key_hold,
+                        const std::unordered_map<int, std::function<std::pair<int, int>()>> *input_to_mouse_move,
+                        const std::unordered_map<int, std::function<std::pair<int, int>()>> *release_to_mouse_move,
+                        const std::unordered_map<int, std::function<int()>> *input_to_mouse_click,
+                        const std::unordered_map<int, std::function<int()>> *release_to_mouse_click,
+                        const std::unordered_map<int, std::function<int()>> *input_to_button_toggle,
+                        const std::unordered_map<int, std::function<int()>> *release_to_button_toggle,
+                        const std::unordered_map<int, std::function<WORD()>> *input_to_key_tap,
+                        const std::unordered_map<int, std::function<WORD()>> *release_to_key_tap,
+                        const std::unordered_map<int, std::function<WORD()>> *input_to_key_hold,
                         const std::unordered_map<int, std::function<bool()>> *input_to_logic_before,
                         const std::unordered_map<int, std::function<bool()>> *input_to_logic_after,
                         const std::unordered_map<int, std::function<bool()>> *release_to_logic_before,
@@ -41,9 +41,12 @@ void Functions::sendInput(const int key, const DWORD flags) const {
 }
 
 bool Functions::actionCallback(const int &input, const bool on_press, const bool before) const {
-    const auto *action_map = before
-                                 ? (on_press ? this->input_to_logic_before : this->release_to_logic_before)
-                                 : (on_press ? this->input_to_logic_after : this->release_to_logic_after);
+    const std::unordered_map<int, std::function<bool()>> *action_map = nullptr;
+    if (before) {
+        action_map = on_press ? this->input_to_logic_before : this->release_to_logic_before;
+    } else {
+        action_map = on_press ? this->input_to_logic_after : this->release_to_logic_after;
+    }
     bool result = true;
     if (action_map != nullptr) {
         auto action = action_map->find(input);
@@ -106,78 +109,77 @@ void Functions::pressThenRelease(const int key_to_tap, const std::function<void(
 }
 
 void Functions::handleToMouseAbsoluteMove(const int &input, const int eventType, const double resScalingX, const double resScalingY) const {
-    auto coordinates = PRESSED_STATES.find(eventType) != PRESSED_STATES.end() ? (*this->input_to_mouse_move).at(input) : (*this->release_to_mouse_move).at(input);
     if ((*this->buttonState).at(input) == eventType) {
         bool on_press = PRESSED_STATES.find(eventType) != PRESSED_STATES.end();
         if (this->actionCallback(input, on_press, true)) {
-            this->moveMouse(coordinates->first, coordinates->second, resScalingX, resScalingY);
+            auto [x, y] = PRESSED_STATES.find(eventType) != PRESSED_STATES.end() ? (*this->input_to_mouse_move).at(input)() : (*this->release_to_mouse_move).at(input)();
+            this->moveMouse(x, y, resScalingX, resScalingY);
             this->actionCallback(input, on_press, false);
         }
     }
 }
 
-void Functions::handleToClick(const int &input, const int eventType) const {
-    int button = PRESSED_STATES.find(eventType) != PRESSED_STATES.end() ? (*this->input_to_mouse_click).at(input) : (*this->release_to_mouse_click).at(input);
-    this->handleToClick(input, button, eventType);
-}
-
-void Functions::handleToClick(const int &input, const int button, const int eventType) const {
+void Functions::handleToClick(const int &input, const int eventType, const int button) const {
     if ((*this->buttonState).at(input) == eventType) {
         bool on_press = PRESSED_STATES.find(eventType) != PRESSED_STATES.end();
         if (this->actionCallback(input, on_press, true)) {
-            std::thread([=] { this->click(button, [=] { this->actionCallback(input, on_press, false); }); })
+            int actualButton;
+            if (button != -1) {
+                actualButton = button;
+            } else {
+                actualButton = PRESSED_STATES.find(eventType) != PRESSED_STATES.end() ? (*this->input_to_mouse_click).at(input)() : (*this->release_to_mouse_click).at(input)();
+            }
+            std::thread([this, actualButton, input, on_press] { this->click(actualButton, [this, input, on_press] { this->actionCallback(input, on_press, false); }); })
                 .detach();
         }
     }
 }
 
-void Functions::handleToButtonToggle(const int &input, const int eventType) const {
-    int button = PRESSED_STATES.find(eventType) != PRESSED_STATES.end() ? (*this->input_to_button_toggle).at(input) : (*this->release_to_button_toggle).at(input);
-    this->handleToButtonToggle(input, button, eventType);
-}
-
-void Functions::handleToButtonToggle(const int &input, const int button, const int eventType) const {
+void Functions::handleToButtonToggle(const int &input, const int eventType, const int button) const {
     if ((*this->buttonState).at(input) == eventType) {
         bool on_press = PRESSED_STATES.find(eventType) != PRESSED_STATES.end();
         if (this->actionCallback(input, on_press, true)) {
-            if (!(GetAsyncKeyState(button) & 0x8000)) {
-                std::thread([=] { this->pressButton(button, [=] { this->actionCallback(input, on_press, false); }); })
+            int actualButton;
+            if (button != -1) {
+                actualButton = button;
+            } else {
+                actualButton = PRESSED_STATES.find(eventType) != PRESSED_STATES.end() ? (*this->input_to_button_toggle).at(input)() : (*this->release_to_button_toggle).at(input)();
+            }
+            if (!(GetAsyncKeyState(actualButton) & 0x8000)) {
+                std::thread([this, actualButton, input, on_press] { this->pressButton(actualButton, [this, input, on_press] { this->actionCallback(input, on_press, false); }); })
                     .detach();
             } else {
-                std::thread([=] { this->releaseButton(button, [=] { this->actionCallback(input, on_press, false); }); })
+                std::thread([this, actualButton, input, on_press] { this->releaseButton(actualButton, [this, input, on_press] { this->actionCallback(input, on_press, false); }); })
                     .detach();
             }
         }
     }
 }
 
-void Functions::handleToKeyTap(const int &input, const int eventType) const {
-    int key = PRESSED_STATES.find(eventType) != PRESSED_STATES.end() ? (*this->input_to_key_tap).at(input) : (*this->release_to_key_tap).at(input);
-    this->handleToKeyTap(input, key, eventType);
-}
-
-void Functions::handleToKeyTap(const int &input, const int key, const int eventType) const {
+void Functions::handleToKeyTap(const int &input, const int eventType, const int key) const {
     if ((*this->buttonState).at(input) == eventType) {
         bool on_press = PRESSED_STATES.find(eventType) != PRESSED_STATES.end();
         if (this->actionCallback(input, on_press, true)) {
-            std::thread([=] { this->pressThenRelease(key, [=] { this->actionCallback(input, on_press, false); }); })
+            int actualKey;
+            if (key != -1) {
+                actualKey = key;
+            } else {
+                actualKey = PRESSED_STATES.find(eventType) != PRESSED_STATES.end() ? (*this->input_to_key_tap).at(input)() : (*this->release_to_key_tap).at(input)();
+            }
+            std::thread([this, actualKey, input, on_press] { this->pressThenRelease(actualKey, [this, input, on_press] { this->actionCallback(input, on_press, false); }); })
                 .detach();
         }
     }
 }
 
-void Functions::handleToKeyHold(const int &input) const {
-    int key = (*this->input_to_key_hold).at(input); // no on-release for this one
-    this->handleToKeyHold(input, key);
-}
-
 void Functions::handleToKeyHold(const int &input, const int key) const {
     int input_state = (*this->buttonState).at(input);
+    int actualKey = key != -1 ? key : (*this->input_to_key_hold).at(input)();
     if (input_state == JUST_PRESSED && this->actionCallback(input, true, true)) {
-        this->sendInput(key, KEYEVENTF_SCANCODE);
+        this->sendInput(actualKey, KEYEVENTF_SCANCODE);
         this->actionCallback(input, true, false);
     } else if (input_state == JUST_RELEASED && this->actionCallback(input, false, true)) {
-        this->sendInput(key, KEYEVENTF_KEYUP);
+        this->sendInput(actualKey, KEYEVENTF_KEYUP);
         this->actionCallback(input, false, false);
     }
 }

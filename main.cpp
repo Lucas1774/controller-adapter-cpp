@@ -54,9 +54,15 @@ int main(int argc, char *argv[]) {
         {A, RELEASED}, {B, RELEASED}, {X, RELEASED}, {Y, RELEASED}, {L1, RELEASED}, {R1, RELEASED}, {SELECT, RELEASED}, {START, RELEASED}, {L3, RELEASED}, {R3, RELEASED}, {XBOX, RELEASED}, {PAD_UP, RELEASED}, {PAD_LEFT, RELEASED}, {PAD_RIGHT, RELEASED}, {PAD_DOWN, RELEASED}, {L2, RELEASED}, {R2, RELEASED}, {ACTIVATE, RELEASED}, {LEFT_JS_LEFT, RELEASED}, {LEFT_JS_RIGHT, RELEASED}, {LEFT_JS_UP, RELEASED}, {LEFT_JS_DOWN, RELEASED}, {RIGHT_JS_LEFT, RELEASED}, {RIGHT_JS_RIGHT, RELEASED}, {RIGHT_JS_UP, RELEASED}, {RIGHT_JS_DOWN, RELEASED}};
 
     static const std::unordered_map<std::string, std::function<void()>> gameRunners = {
-        {"swarm", [&]() { swarm::run(buttonState, hasTriggers, config, screenWidth, screenHeight, joystick); }},
-        {"tft", [&]() { tft::run(buttonState, hasTriggers, config, screenWidth, screenHeight, joystick); }},
-        {"chess", [&]() { chess::run(buttonState, config, screenWidth, screenHeight); }}};
+        {"swarm", [&buttonState, hasTriggers, config, screenWidth, screenHeight, &joystick]() {
+             swarm::run(buttonState, hasTriggers, config, screenWidth, screenHeight, joystick);
+         }},
+        {"tft", [&buttonState, hasTriggers, config, screenWidth, screenHeight, &joystick]() {
+             tft::run(buttonState, hasTriggers, config, screenWidth, screenHeight, joystick);
+         }},
+        {"chess", [&buttonState, config, screenWidth, screenHeight]() {
+             chess::run(buttonState, config, screenWidth, screenHeight);
+         }}};
 
     if (auto it = gameRunners.find(game); it != gameRunners.end()) {
         it->second();

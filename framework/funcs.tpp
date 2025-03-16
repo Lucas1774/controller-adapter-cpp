@@ -4,14 +4,11 @@ template <size_t Elements>
 bool Functions::computeAdjacencyMatrixBasedMouseTarget(
     const std::array<std::array<int, Elements>, Elements> &adjacencyMatrix,
     const std::array<std::pair<int, int>, Elements> &coordinates,
-    std::pair<int, int> &newCoordinates, int &index, const int button,
-    const double resScalingX, const double resScalingY) const {
+    std::pair<int, int> &newCoordinates, int &index, const int button) const {
     for (int i = 0; i < Elements; ++i) {
         if (adjacencyMatrix[index][i] == button) {
             index = i;
-            newCoordinates = {
-                coordinates[i].first * resScalingX,
-                coordinates[i].second * resScalingY};
+            newCoordinates = coordinates[i];
             return true;
         }
     }
@@ -21,8 +18,7 @@ bool Functions::computeAdjacencyMatrixBasedMouseTarget(
 template <size_t Rows, size_t Cols>
 bool Functions::computeGridBasedMouseTarget(
     const std::array<std::array<std::pair<int, int>, Cols>, Rows> &coordinates,
-    std::pair<int, int> &newCoordinates, int &rowIndex, int &columnIndex, const int button,
-    const double resScalingX, const double resScalingY) const {
+    std::pair<int, int> &newCoordinates, int &rowIndex, int &columnIndex, const int button) const {
     switch (button) {
     case PAD_UP:
         if (1 == Rows) {
@@ -51,8 +47,6 @@ bool Functions::computeGridBasedMouseTarget(
     default:
         break;
     }
-    newCoordinates = {
-        coordinates[rowIndex][columnIndex].first * resScalingX,
-        coordinates[rowIndex][columnIndex].second * resScalingY};
+    newCoordinates = coordinates[rowIndex][columnIndex];
     return true;
 }
