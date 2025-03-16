@@ -136,6 +136,7 @@ void run(std::unordered_map<int, int> &buttonState,
                 if (buttonState[L3] == JUST_PRESSED) {
                     buttonState[R1] = RELEASED;
                     buttonState[L1] = RELEASED;
+                    currentRadius = MAX_RADIUS_HIGH_PRECISION_OFF;
                 }
 
                 // action
