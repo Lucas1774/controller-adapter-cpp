@@ -4,10 +4,7 @@
 #include "constants.h"
 #include "joystick.h"
 #include <SDL2/SDL.h>
-#include <chrono>
 #include <functional>
-#include <unordered_map>
-#include <unordered_set>
 #include <windows.h>
 
 class Functions {
@@ -30,12 +27,12 @@ class Functions {
     /// @brief Moves cursor to the specified position.
     /// @param x x coordinate.
     /// @param y y coordinate.
-    void moveMouse(const int x, const int y) const;
+    void moveMouse(const int x, const int y, const double resScalingX, const double resScalingY) const;
 
     /// @brief moves the cursor relative to the current position.
     /// @param x x delta.
     /// @param y y delta.
-    void moveMouseRelative(const int x, const int y) const;
+    void moveMouseRelative(const int x, const int y, const double resScalingX, const double resScalingY) const;
 
     /// @brief sends a simple click.
     /// @param button mouse button to click.
@@ -46,7 +43,7 @@ class Functions {
     /// Can execute callbacks if defined in the corresponding logic before/after maps. Before callback is boolean and can stop the action.
     /// @param input controller button linked to the click and key in the map.
     /// @param eventType to match for the mouse to move to the mapped location. Can be any.
-    void handleToMouseAbsoluteMove(const int &input, const int eventType) const;
+    void handleToMouseAbsoluteMove(const int &input, const int eventType, const double resScalingX, const double resScalingY) const;
 
     /// @brief clicks the button defined in input_to_mouse_click or release_to_mouse_click map if the input state matches eventType.
     /// Can execute callbacks if defined in the corresponding logic before/after maps. Before callback is boolean and can stop the action.
@@ -144,6 +141,37 @@ class Functions {
     /// @return the index of the pressed virtual button, where 0 is the bottom-left button and 7 is the bottom one.
     int generateAxisTargetWithBitMask(const ButtonGroups eightAxis) const;
 
+    /// @brief returns coordinates for a mouse target based on an adjacency matrix to update dynamic state in callback before input action.
+    /// Should be used in callback before input maps for inputs mapped to dynamic target mouse movements.
+    /// @tparam Elements size of the coordinate array.
+    /// @param adjacencyMatrix adjacency matrix to determine the next target based on the current target and the input button.
+    /// @param coordinates coordinate array.
+    /// @param newCoordinates to be updated by the function.
+    /// @param index current index in the coordinate array. To be updated by the function.
+    /// @param button input button to determine the next target.
+    /// @return true if a mouse target update was made and thus a mouse move call should be made.
+    template <size_t Elements>
+    bool computeAdjacencyMatrixBasedMouseTarget(
+        const std::array<std::array<int, Elements>, Elements> &adjacencyMatrix,
+        const std::array<std::pair<int, int>, Elements> &coordinates,
+        std::pair<int, int> &newCoordinates, int &index, const int button,
+        const double resScalingX, const double resScalingY) const;
+
+    /// @brief returns coordinates for a mouse target based on a 2D coordinate grid to update dynamic state in callback before input action.
+    /// @tparam Rows rows of the coordinate grid.
+    /// @tparam Cols columns of the coordinate grid.
+    /// @param coordinates coordinate grid.
+    /// @param newCoordinates to be updated by the function.
+    /// @param rowIndex current row index in the grid. To be updated by the function.
+    /// @param columnIndex current column index in the grid. To be updated by the function.
+    /// @param button input button to determine the next target
+    /// @return true if a mouse target update was made and thus a mouse move call should be made.
+    template <size_t Rows, size_t Cols>
+    bool computeGridBasedMouseTarget(
+        const std::array<std::array<std::pair<int, int>, Cols>, Rows> &coordinates,
+        std::pair<int, int> &newCoordinates, int &rowIndex, int &columnIndex, const int button,
+        const double resScalingX, const double resScalingY) const;
+
   private:
     const std::unordered_map<int, DWORD> BUTTON_ID_TO_PRESS_EVENT = {
         {SDL_BUTTON_LEFT, MOUSEEVENTF_LEFTDOWN},
@@ -174,5 +202,7 @@ class Functions {
     const std::unordered_map<int, std::function<bool()>> *release_to_logic_before;
     const std::unordered_map<int, std::function<bool()>> *release_to_logic_after;
 };
+
+#include "funcs.tpp"
 
 #endif // FUNCTIONS_H

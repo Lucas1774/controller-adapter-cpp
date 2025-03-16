@@ -4,11 +4,9 @@
 #include "constants.h"
 #include "swarm.h"
 #include "tft.h"
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_main.h>
 #include <fstream>
+#include <functional>
 #include <iostream>
-#include <unordered_map>
 #include <windows.h>
 
 int main(int argc, char *argv[]) {
@@ -60,8 +58,7 @@ int main(int argc, char *argv[]) {
         {"tft", [&]() { tft::run(buttonState, hasTriggers, config, screenWidth, screenHeight, joystick); }},
         {"chess", [&]() { chess::run(buttonState, config, screenWidth, screenHeight); }}};
 
-    auto it = gameRunners.find(game);
-    if (it != gameRunners.end()) {
+    if (auto it = gameRunners.find(game); it != gameRunners.end()) {
         it->second();
     } else {
         std::cerr << "Invalid game" << std::endl;

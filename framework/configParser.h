@@ -1,8 +1,7 @@
 #ifndef CONFIGPARSER_H
 #define CONFIGPARSER_H
 
-#include "Joystick.h"
-#include "constants.h"
+#include "joystick.h"
 #include <json/json.h>
 #include <string>
 #include <unordered_map>

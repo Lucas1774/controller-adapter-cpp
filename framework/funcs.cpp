@@ -1,5 +1,4 @@
 #include "funcs.h"
-#include <functional>
 #include <thread>
 #include <windows.h>
 
@@ -55,23 +54,23 @@ bool Functions::actionCallback(const int &input, const bool on_press, const bool
     return result;
 }
 
-void Functions::moveMouse(const int x, const int y) const {
-    SetCursorPos(x, y);
+void Functions::moveMouse(const int x, const int y, const double resScalingX, const double resScalingY) const {
+    SetCursorPos(static_cast<int>(x * resScalingX), static_cast<int>(y * resScalingY));
 }
 
-void Functions::moveMouseRelative(const int x, const int y) const {
+void Functions::moveMouseRelative(const int x, const int y, const double resScalingX, const double resScalingY) const {
     POINT p;
     GetCursorPos(&p);
-    SetCursorPos(p.x + x, p.y + y);
+    SetCursorPos(static_cast<int>(p.x + x * resScalingX), static_cast<int>(p.y + y * resScalingY));
 }
 
 void Functions::click(const int button_to_click, const std::function<void()> &callback) const {
-    INPUT ip[2] = {0};
+    std::array<INPUT, 2> ip = {0};
     ip[0].type = INPUT_MOUSE;
     ip[0].mi.dwFlags = this->BUTTON_ID_TO_PRESS_EVENT.at(button_to_click);
     ip[1].type = INPUT_MOUSE;
     ip[1].mi.dwFlags = this->BUTTON_ID_TO_RELEASE_EVENT.at(button_to_click);
-    SendInput(2, ip, sizeof(INPUT));
+    SendInput(2, ip.data(), sizeof(INPUT));
     if (callback) {
         callback();
     }
@@ -106,12 +105,12 @@ void Functions::pressThenRelease(const int key_to_tap, const std::function<void(
     }
 }
 
-void Functions::handleToMouseAbsoluteMove(const int &input, const int eventType) const {
+void Functions::handleToMouseAbsoluteMove(const int &input, const int eventType, const double resScalingX, const double resScalingY) const {
     auto coordinates = PRESSED_STATES.find(eventType) != PRESSED_STATES.end() ? (*this->input_to_mouse_move).at(input) : (*this->release_to_mouse_move).at(input);
     if ((*this->buttonState).at(input) == eventType) {
         bool on_press = PRESSED_STATES.find(eventType) != PRESSED_STATES.end();
         if (this->actionCallback(input, on_press, true)) {
-            this->moveMouse(coordinates->first, coordinates->second);
+            this->moveMouse(coordinates->first, coordinates->second, resScalingX, resScalingY);
             this->actionCallback(input, on_press, false);
         }
     }
@@ -197,7 +196,7 @@ void Functions::listenToRunEvent(const std::vector<SDL_Event> &events,
     }
 }
 
-void Functions::handleState(int &state, bool is_pressed) const {
+void Functions::handleState(int &state, const bool is_pressed) const {
     if (is_pressed) {
         if (state == RELEASED) {
             state = JUST_PRESSED;

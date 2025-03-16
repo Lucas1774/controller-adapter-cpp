@@ -5,6 +5,11 @@
 #include <unordered_map>
 #include <unordered_set>
 
+static constexpr int NONE = -1;
+static constexpr int CENTER_X = 960;
+static constexpr int CENTER_Y = 540;
+static constexpr std::pair<int, int> CENTER = {CENTER_X, CENTER_Y};
+
 enum Buttons {
     A,
     B,

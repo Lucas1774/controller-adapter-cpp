@@ -1,17 +1,36 @@
 #include "swarm.h"
 #include "configParser.h"
-#include "constants.h"
 #include "funcs.h"
 #include <chrono>
 #include <cmath>
 #include <fstream>
 #include <iostream>
 #include <thread>
-#include <unordered_map>
 #include <vector>
 #include <windows.h>
-
 namespace swarm {
+
+struct State {
+    int cardIndex;
+    std::pair<int, int> mouseTarget;
+};
+
+static constexpr std::array<std::pair<int, int>, 4> CARD_COORDINATES = {
+    {{720, CENTER_Y}, CENTER, {1200, CENTER_Y}, {CENTER_X, 825}}};
+
+static constexpr std::array<std::array<int, 4>, 4> CARD_ADJACENCY_MATRIX = {
+    {{NONE, PAD_RIGHT, PAD_LEFT, PAD_DOWN}, // left
+     {PAD_LEFT, NONE, PAD_RIGHT, PAD_DOWN}, // center
+     {PAD_RIGHT, PAD_LEFT, NONE, PAD_DOWN}, // right
+     {PAD_LEFT, PAD_UP, PAD_RIGHT, NONE}}}; // reroll
+
+static bool updateAbstractState(const int button, State &state, BufferState &bufferState, const double resScalingX, const double resScalingY, const Functions &functions) {
+    if (!functions.isBufferFree(200, 50, button, bufferState)) {
+        return false;
+    }
+    return functions.computeAdjacencyMatrixBasedMouseTarget(CARD_ADJACENCY_MATRIX, CARD_COORDINATES, state.mouseTarget, state.cardIndex, button, resScalingX, resScalingY);
+}
+
 void run(std::unordered_map<int, int> &buttonState,
          const bool &hasTriggers,
          const Json::Value &config,
@@ -37,14 +56,20 @@ void run(std::unordered_map<int, int> &buttonState,
     double currentRadius = MAX_RADIUS_HIGH_PRECISION_OFF;
 
     Functions functions;
-    const int center_x = screenWidth / 2;
-    const int center_y = screenHeight / 2;
+    const double resScalingX = screenWidth / 1920.0;
+    const double resScalingY = screenHeight / 1080.0;
+    const auto now = std::chrono::steady_clock::now();
+    std::pair<int, int> center = CENTER;
 
-    auto left_card_pos = std::make_pair(720, center_y);
-    auto right_card_pos = std::make_pair(1200, center_y);
-    auto center_pos = std::make_pair(center_x, center_y);
-    auto reroll_pos = std::make_pair(center_x, 825);
+    State state = {
+        .cardIndex = 1,
+        .mouseTarget = {}};
+    BufferState bufferState = {
+        .last_pressed = now,
+        .last_executed = now,
+        .is_unleashed = false};
 
+    const auto TURBO_INPUTS = std::unordered_set<int>{PAD_LEFT, PAD_RIGHT, PAD_UP, PAD_DOWN};
     const auto INPUT_TO_KEY_TAP = std::unordered_map<int, WORD>{{START, VK_ESCAPE}, {X, 'C'}, {Y, 'O'}};
     const auto INPUT_TO_KEY_HOLD = std::unordered_map<int, WORD>{
         {LEFT_JS_LEFT, 'A'},
@@ -54,19 +79,22 @@ void run(std::unordered_map<int, int> &buttonState,
         {B, VK_TAB},
         {R2, 'T'},
     };
-    // TODO: use a "mouseTarget" reference instead, that can be dynamically applied res scaling to
     const auto INPUT_TO_MOUSE_MOVE = std::unordered_map<int, std::pair<int, int> *>{
-        {PAD_LEFT, &left_card_pos},
-        {PAD_RIGHT, &right_card_pos},
-        {PAD_UP, &center_pos},
-        {PAD_DOWN, &reroll_pos},
-        {R3, &center_pos},
+        {PAD_LEFT, &state.mouseTarget},
+        {PAD_RIGHT, &state.mouseTarget},
+        {PAD_UP, &state.mouseTarget},
+        {PAD_DOWN, &state.mouseTarget},
+        {R3, &center},
     };
     const auto INPUT_TO_MOUSE_CLICK = std::unordered_map<int, int>{{A, SDL_BUTTON_LEFT}};
     const auto RELEASE_TO_KEY_TAP = std::unordered_map<int, WORD>{{R1, 'R'}, {L1, 'E'}};
     const auto INPUT_TO_LOGIC_BEFORE = std::unordered_map<int, std::function<bool()>>{
-        {R2, [&]() { functions.moveMouse(center_x, center_y); return true; }},
+        {R2, [&]() { functions.moveMouse(CENTER_X, CENTER_Y, resScalingX, resScalingY); return true; }},
         {R3, [&]() { highPrecisionAlwaysOn = !highPrecisionAlwaysOn; return true; }},
+        {PAD_LEFT, [&]() { return updateAbstractState(PAD_LEFT, state, bufferState, resScalingX, resScalingY, functions); }},
+        {PAD_RIGHT, [&]() { return updateAbstractState(PAD_RIGHT, state, bufferState, resScalingX, resScalingY, functions); }},
+        {PAD_UP, [&]() { return updateAbstractState(PAD_UP, state, bufferState, resScalingX, resScalingY, functions); }},
+        {PAD_DOWN, [&]() { return updateAbstractState(PAD_DOWN, state, bufferState, resScalingX, resScalingY, functions); }},
     };
     const auto RELEASE_TO_LOGIC_AFTER = std::unordered_map<int, std::function<bool()>>{
         {R1, [&]() { currentRadius = MAX_RADIUS_HIGH_PRECISION_OFF; return true; }},
@@ -115,7 +143,10 @@ void run(std::unordered_map<int, int> &buttonState,
                     functions.handleToKeyHold(input);
                 }
                 for (const auto &[input, _] : INPUT_TO_MOUSE_MOVE) {
-                    functions.handleToMouseAbsoluteMove(input, JUST_PRESSED);
+                    if (TURBO_INPUTS.find(input) != TURBO_INPUTS.end()) {
+                        functions.handleToMouseAbsoluteMove(input, PRESSED, resScalingX, resScalingY);
+                    }
+                    functions.handleToMouseAbsoluteMove(input, JUST_PRESSED, resScalingX, resScalingY);
                 }
                 for (const auto &[input, _] : RELEASE_TO_KEY_TAP) {
                     functions.handleToKeyTap(input, JUST_RELEASED);
@@ -126,16 +157,18 @@ void run(std::unordered_map<int, int> &buttonState,
 
                 if (rightJoystick.isXActive || rightJoystick.isYActive) {
                     if (highPrecisionAlwaysOn || highPrecision) {
-                        if (std::chrono::steady_clock::now() - lastUpdateTime > std::chrono::milliseconds(100)) {
+                        if (std::chrono::steady_clock::now() - lastUpdateTime > std::chrono::milliseconds(16)) {
                             functions.moveMouseRelative(
-                                static_cast<int>(round(rightJoystick.x * rightJoystick.sensitivity * 500)),
-                                static_cast<int>(round(rightJoystick.y * rightJoystick.sensitivity * 500)));
+                                static_cast<int>(round(rightJoystick.x * rightJoystick.sensitivity * 100)),
+                                static_cast<int>(round(rightJoystick.y * rightJoystick.sensitivity * 100)),
+                                resScalingX, resScalingY);
                             lastUpdateTime = std::chrono::steady_clock::now();
                         }
                     } else {
                         functions.moveMouse(
-                            static_cast<int>(round(rightJoystick.x * center_x * currentRadius + center_x)),
-                            static_cast<int>(round(rightJoystick.y * center_y * currentRadius + center_y)));
+                            static_cast<int>(round(rightJoystick.x * CENTER_X * currentRadius + CENTER_X)),
+                            static_cast<int>(round(rightJoystick.y * CENTER_Y * currentRadius + CENTER_Y)),
+                            resScalingX, resScalingY);
                     }
                 }
             }
