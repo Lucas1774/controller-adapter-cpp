@@ -144,24 +144,7 @@ void run(std::unordered_map<int, int> &buttonState,
                 }
 
                 // action
-                for (const auto &[input, _] : INPUT_TO_KEY_TAP) {
-                    functions::handleToKeyTap(mappings, input, JUST_PRESSED);
-                }
-                for (const auto &[input, _] : INPUT_TO_KEY_HOLD) {
-                    functions::handleToKeyHold(mappings, input);
-                }
-                for (const auto &[input, _] : INPUT_TO_MOUSE_MOVE) {
-                    if (TURBO_INPUTS.find(input) != TURBO_INPUTS.end()) {
-                        functions::handleToMouseAbsoluteMove(mappings, input, PRESSED, resScalingX, resScalingY);
-                    }
-                    functions::handleToMouseAbsoluteMove(mappings, input, JUST_PRESSED, resScalingX, resScalingY);
-                }
-                for (const auto &[input, _] : RELEASE_TO_KEY_TAP) {
-                    functions::handleToKeyTap(mappings, input, JUST_RELEASED);
-                }
-                for (const auto &[input, _] : INPUT_TO_MOUSE_CLICK) {
-                    functions::handleToClick(mappings, input, JUST_PRESSED);
-                }
+                functions::runMappings(mappings, resScalingX, resScalingY, TURBO_INPUTS);
 
                 if (rightJoystick.isXActive || rightJoystick.isYActive) {
                     if (highPrecisionAlwaysOn || highPrecision) {

@@ -8,10 +8,12 @@ namespace functions {
 namespace {
 
 const std::unordered_map<int, DWORD> BUTTON_ID_TO_PRESS_EVENT = {
+    {0, 0}, // noop hack
     {SDL_BUTTON_LEFT, MOUSEEVENTF_LEFTDOWN},
     {SDL_BUTTON_RIGHT, MOUSEEVENTF_RIGHTDOWN},
     {SDL_BUTTON_MIDDLE, MOUSEEVENTF_MIDDLEDOWN}};
 const std::unordered_map<int, DWORD> BUTTON_ID_TO_RELEASE_EVENT = {
+    {0, 0}, // noop hack
     {SDL_BUTTON_LEFT, MOUSEEVENTF_LEFTUP},
     {SDL_BUTTON_RIGHT, MOUSEEVENTF_RIGHTUP},
     {SDL_BUTTON_MIDDLE, MOUSEEVENTF_MIDDLEUP}};
@@ -81,6 +83,51 @@ void handleState(int &state, const bool is_pressed) {
 }
 
 } // namespace
+
+void runMappings(const Mappings &mappings, double resScalingX, double resScalingY, const std::unordered_set<int> &turboInputs) {
+    for (const auto &[input, _] : mappings.input_to_mouse_move) {
+        if (turboInputs.find(input) != turboInputs.end()) {
+            handleToMouseAbsoluteMove(mappings, input, PRESSED, resScalingX, resScalingY);
+        }
+        handleToMouseAbsoluteMove(mappings, input, JUST_PRESSED, resScalingX, resScalingY);
+    }
+    for (const auto &[input, _] : mappings.release_to_mouse_move) {
+        handleToMouseAbsoluteMove(mappings, input, JUST_RELEASED, resScalingX, resScalingY);
+    }
+    for (const auto &[input, _] : mappings.input_to_mouse_click) {
+        if (turboInputs.find(input) != turboInputs.end()) {
+            handleToClick(mappings, input, PRESSED);
+        }
+        handleToClick(mappings, input, JUST_PRESSED);
+    }
+    for (const auto &[input, _] : mappings.release_to_mouse_click) {
+        handleToClick(mappings, input, JUST_RELEASED);
+    }
+    for (const auto &[input, _] : mappings.input_to_button_toggle) {
+        if (turboInputs.find(input) != turboInputs.end()) {
+            handleToButtonToggle(mappings, input, PRESSED);
+        }
+        handleToButtonToggle(mappings, input, JUST_PRESSED);
+    }
+    for (const auto &[input, _] : mappings.release_to_button_toggle) {
+        handleToButtonToggle(mappings, input, JUST_RELEASED);
+    }
+    for (const auto &[input, _] : mappings.input_to_key_tap) {
+        if (turboInputs.find(input) != turboInputs.end()) {
+            handleToKeyTap(mappings, input, PRESSED);
+        }
+        handleToKeyTap(mappings, input, JUST_PRESSED);
+    }
+    for (const auto &[input, _] : mappings.release_to_key_tap) {
+        handleToKeyTap(mappings, input, JUST_RELEASED);
+    }
+    for (const auto &[input, _] : mappings.input_to_key_hold) {
+        if (turboInputs.find(input) != turboInputs.end()) {
+            handleToKeyHold(mappings, input);
+        }
+        handleToKeyHold(mappings, input);
+    }
+}
 
 void moveMouse(const int x, const int y, const double resScalingX, const double resScalingY) {
     SetCursorPos(static_cast<int>(x * resScalingX), static_cast<int>(y * resScalingY));

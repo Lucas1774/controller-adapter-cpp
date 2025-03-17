@@ -26,6 +26,13 @@ struct Mappings {
     const std::unordered_map<int, std::function<void()>> &release_to_logic_after = {};
 };
 
+/// @brief runs the handler you would expect for each input in each map.
+/// @param mappings mappings.
+/// @param resScalingX horizontal resolution factor over 1080p.
+/// @param resScalingY vertical resolution factor over 1080p.
+/// @param turboInputs set of inputs for which to run the handler on press, not just on just pressed.
+void runMappings(const Mappings &mappings, double resScalingX = 1.0, double resScalingY = 1.0, const std::unordered_set<int> &turboInputs = {});
+
 /// @brief Moves cursor to the specified position.
 /// @param x x coordinate.
 /// @param y y coordinate.

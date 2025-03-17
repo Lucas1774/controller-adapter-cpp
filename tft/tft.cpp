@@ -175,7 +175,10 @@ void run(std::unordered_map<int, int> &buttonState,
         {L2, [] { return 'Q'; }},
         {START, [] { return 'W'; }}};
     const auto INPUT_TO_MOUSE_CLICK = std::unordered_map<int, std::function<int()>>{
-        {SELECT, [] { return SDL_BUTTON_RIGHT; }}};
+        {SELECT, [] { return SDL_BUTTON_RIGHT; }},
+        {A, [&state] { return state.mode != MouseMovementWithPadMode::ITEMS ? SDL_BUTTON_LEFT : 0; }}};
+    const auto INPUT_TO_BUTTON_TOGGLE = std::unordered_map<int, std::function<int()>>{
+        {A, [&state] { return state.mode != MouseMovementWithPadMode::ITEMS ? 0 : SDL_BUTTON_LEFT; }}};
     const auto INPUT_TO_MOUSE_MOVE = std::unordered_map<int, std::function<std::pair<int, int>()>>{
         {PAD_LEFT, [&state] { return getMouseTarget(state); }},
         {PAD_RIGHT, [&state] { return getMouseTarget(state); }},
@@ -199,6 +202,7 @@ void run(std::unordered_map<int, int> &buttonState,
         .input_to_mouse_move = INPUT_TO_MOUSE_MOVE,
         .release_to_mouse_move = RELEASE_TO_MOUSE_MOVE,
         .input_to_mouse_click = INPUT_TO_MOUSE_CLICK,
+        .input_to_button_toggle = INPUT_TO_BUTTON_TOGGLE,
         .input_to_key_tap = INPUT_TO_KEY_TAP,
         .input_to_logic_before = INPUT_TO_LOGIC_BEFORE};
 
@@ -270,26 +274,7 @@ void run(std::unordered_map<int, int> &buttonState,
                 }
 
                 // action
-                for (const auto &[input, _] : INPUT_TO_KEY_TAP) {
-                    functions::handleToKeyTap(mappings, input, JUST_PRESSED);
-                }
-                for (const auto &[input, _] : INPUT_TO_MOUSE_MOVE) {
-                    if (TURBO_INPUTS.find(input) != TURBO_INPUTS.end()) {
-                        functions::handleToMouseAbsoluteMove(mappings, input, PRESSED, resScalingX, resScalingY);
-                    }
-                    functions::handleToMouseAbsoluteMove(mappings, input, JUST_PRESSED, resScalingX, resScalingY);
-                }
-                for (const auto &[input, _] : RELEASE_TO_MOUSE_MOVE) {
-                    functions::handleToMouseAbsoluteMove(mappings, input, JUST_RELEASED, resScalingX, resScalingY);
-                }
-                for (const auto &[input, _] : INPUT_TO_MOUSE_CLICK) {
-                    functions::handleToClick(mappings, input, JUST_PRESSED);
-                }
-                if (state.mode != MouseMovementWithPadMode::ITEMS) {
-                    functions::handleToClick(mappings, A, JUST_PRESSED, SDL_BUTTON_LEFT);
-                } else {
-                    functions::handleToButtonToggle(mappings, A, JUST_PRESSED, SDL_BUTTON_LEFT);
-                }
+                functions::runMappings(mappings, resScalingX, resScalingY, TURBO_INPUTS);
 
                 if (rightJoystick.isXActive || rightJoystick.isYActive) {
                     if (std::chrono::steady_clock::now() - lastUpdateTime > std::chrono::milliseconds(MILLIS_PER_FRAME)) {
