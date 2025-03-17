@@ -34,7 +34,7 @@ This game has custom config. See inside its folder.
     R1 (hold) -> shop mode
     L2 -> R
     R2 -> Q
-    L3 -> toggle lock + portal picking mode
+    L3 -> toggle lock mode
     R3 -> toggle card selection mode
     LEFT JOYSTICK (hold) -> move
     RIGHT JOYSTICK (hold) -> move mouse
@@ -54,7 +54,7 @@ This game has custom config. See inside its folder.
 
     START -> ESCAPE
     SELECT -> frostland
-    A -> LEFT CLICK
+    A -> LEFT CLICK (or left mouse button toggle if already down or in shop mode)
     B -> RIGHT CLICK
     X -> PAUSE
     Y -> cycle through overlays

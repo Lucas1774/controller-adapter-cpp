@@ -24,7 +24,6 @@ struct State {
     int drawRow;
     int drawColumn;
     Mode mode;
-    std::pair<int, int> mouseTarget;
 };
 
 static constexpr std::array<std::array<std::pair<int, int>, 8>, 8> BOARD_COORDINATES = {
@@ -52,19 +51,26 @@ static bool updateAbstractState(const int button, State &state, BufferState &buf
 
     static const std::map<Mode, std::function<bool()>> modeToFunction = {
         {Mode::BOARD, [&functions, &state, &button]() {
-             return functions.computeGridBasedTarget(BOARD_COORDINATES, state.mouseTarget, state.boardRow, state.boardColumn, button);
+             return functions.computeGridBasedTarget(BOARD_COORDINATES.size(), BOARD_COORDINATES[0].size(), state.boardRow, state.boardColumn, button);
          }},
         {Mode::RESIGN, [&functions, &state, &button]() {
-             return functions.computeGridBasedTarget(RESIGN_YES_NO, state.mouseTarget, state.resignRow, state.resignColumn, button);
+             return functions.computeGridBasedTarget(RESIGN_YES_NO.size(), RESIGN_YES_NO[0].size(), state.resignRow, state.resignColumn, button);
          }},
         {Mode::DRAW, [&functions, &state, &button]() {
-             return functions.computeGridBasedTarget(DRAW_YES_NO, state.mouseTarget, state.drawRow, state.drawColumn, button);
+             return functions.computeGridBasedTarget(DRAW_YES_NO.size(), DRAW_YES_NO[0].size(), state.drawRow, state.drawColumn, button);
          }}};
 
-    if (auto it = modeToFunction.find(state.mode); it != modeToFunction.end()) {
-        return it->second();
-    }
-    return false;
+    return modeToFunction.at(state.mode)();
+}
+
+static std::pair<int, int> getMouseTarget(const State &state) {
+
+    static const std::unordered_map<Mode, std::function<std::pair<int, int>()>> modeToStateDependingCoordinates = {
+        {Mode::BOARD, [&state] { return BOARD_COORDINATES[state.boardRow][state.boardColumn]; }},
+        {Mode::RESIGN, [&state] { return RESIGN_YES_NO[state.resignRow][state.resignColumn]; }},
+        {Mode::DRAW, [&state] { return DRAW_YES_NO[state.drawRow][state.drawColumn]; }}};
+
+    return modeToStateDependingCoordinates.at(state.mode)();
 }
 
 void run(std::unordered_map<int, int> &buttonState,
@@ -79,15 +85,14 @@ void run(std::unordered_map<int, int> &buttonState,
     const double resScalingY = screenHeight / 1080.0;
     const auto now = std::chrono::steady_clock::now();
 
-    State programState = {
+    State state = {
         .boardRow = 0,
         .boardColumn = 0,
         .resignRow = 0,
         .resignColumn = 0,
         .drawRow = 0,
         .drawColumn = 0,
-        .mode = Mode::BOARD,
-        .mouseTarget = {}};
+        .mode = Mode::BOARD};
     BufferState bufferState = {
         .lastPressed = now,
         .lastExecuted = now,
@@ -95,10 +100,10 @@ void run(std::unordered_map<int, int> &buttonState,
 
     const auto TURBO_INPUTS = std::unordered_set<int>{PAD_LEFT, PAD_RIGHT, PAD_UP, PAD_DOWN};
     const auto INPUT_TO_MOUSE_MOVE = std::unordered_map<int, std::function<std::pair<int, int>()>>{
-        {PAD_LEFT, [&programState]() { return programState.mouseTarget; }},
-        {PAD_RIGHT, [&programState]() { return programState.mouseTarget; }},
-        {PAD_UP, [&programState]() { return programState.mouseTarget; }},
-        {PAD_DOWN, [&programState]() { return programState.mouseTarget; }}};
+        {PAD_LEFT, [&state]() { return getMouseTarget(state); }},
+        {PAD_RIGHT, [&state]() { return getMouseTarget(state); }},
+        {PAD_UP, [&state]() { return getMouseTarget(state); }},
+        {PAD_DOWN, [&state]() { return getMouseTarget(state); }}};
     const auto INPUT_TO_BUTTON_CLICK = std::unordered_map<int, std::function<int()>>{
         {B, []() { return SDL_BUTTON_RIGHT; }},
         {R1, []() { return SDL_BUTTON_LEFT; }},
@@ -112,20 +117,20 @@ void run(std::unordered_map<int, int> &buttonState,
         {R1, [&functions, resScalingX, resScalingY]() { functions.moveMouse(PLAY_AGAIN.first,PLAY_AGAIN.second, resScalingX, resScalingY); return true; }},
         {X, [&functions, resScalingX, resScalingY]() { functions.moveMouse(DRAW.first,DRAW.second, resScalingX, resScalingY); return true; }},
         {Y, [&functions, resScalingX, resScalingY]() { functions.moveMouse(RESIGN.first,RESIGN.second, resScalingX, resScalingY); return true; }},
-        {PAD_LEFT, [&functions, &programState, &bufferState]() { return updateAbstractState(PAD_LEFT, programState, bufferState, functions); }},
-        {PAD_RIGHT, [&functions, &programState, &bufferState]() { return updateAbstractState(PAD_RIGHT, programState, bufferState, functions); }},
-        {PAD_UP, [&functions, &programState, &bufferState]() { return updateAbstractState(PAD_UP, programState, bufferState, functions); }},
-        {PAD_DOWN, [&functions, &programState, &bufferState]() { return updateAbstractState(PAD_DOWN, programState, bufferState, functions); }}};
+        {PAD_LEFT, [&functions, &state, &bufferState]() { return updateAbstractState(PAD_LEFT, state, bufferState, functions); }},
+        {PAD_RIGHT, [&functions, &state, &bufferState]() { return updateAbstractState(PAD_RIGHT, state, bufferState, functions); }},
+        {PAD_UP, [&functions, &state, &bufferState]() { return updateAbstractState(PAD_UP, state, bufferState, functions); }},
+        {PAD_DOWN, [&functions, &state, &bufferState]() { return updateAbstractState(PAD_DOWN, state, bufferState, functions); }}};
     const auto INPUT_TO_LOGIC_AFTER = std::unordered_map<int, std::function<void()>>{
-        {L1, [&functions, &programState, resScalingX, resScalingY]() { auto [x, y] = BOARD_COORDINATES[programState.boardRow][programState.boardColumn];
+        {L1, [&functions, &state, resScalingX, resScalingY]() { auto [x, y] = BOARD_COORDINATES[state.boardRow][state.boardColumn];
             functions.moveMouse(x, y, resScalingX, resScalingY); }},
-        {R1, [&functions, &programState, resScalingX, resScalingY]() { auto [x, y] = BOARD_COORDINATES[programState.boardRow][programState.boardColumn];
+        {R1, [&functions, &state, resScalingX, resScalingY]() { auto [x, y] = BOARD_COORDINATES[state.boardRow][state.boardColumn];
             functions.moveMouse(x, y, resScalingX, resScalingY); }},
-        {X, [&functions, &programState, resScalingX, resScalingY]() { programState.mode = Mode::DRAW; auto [x, y] = DRAW_YES_NO[0][programState.drawColumn];
+        {X, [&functions, &state, resScalingX, resScalingY]() { state.mode = Mode::DRAW; auto [x, y] = DRAW_YES_NO[0][state.drawColumn];
             functions.moveMouse(x, y, resScalingX, resScalingY); }},
-        {Y, [&functions, &programState, resScalingX, resScalingY]() { programState.mode = Mode::RESIGN; auto [x, y] = RESIGN_YES_NO[0][programState.resignColumn];
+        {Y, [&functions, &state, resScalingX, resScalingY]() { state.mode = Mode::RESIGN; auto [x, y] = RESIGN_YES_NO[0][state.resignColumn];
             functions.moveMouse(x, y, resScalingX, resScalingY); }},
-        {A, [&programState]() { if (programState.mode != Mode::BOARD) {programState.mode = Mode::BOARD; programState.drawColumn = 0; programState.resignColumn = 0;}
+        {A, [&state]() { if (state.mode != Mode::BOARD) {state.mode = Mode::BOARD; state.drawColumn = 0; state.resignColumn = 0;}
         return true; }}};
 
     functions.setMaps(&buttonState, &INPUT_TO_MOUSE_MOVE, nullptr, &INPUT_TO_BUTTON_CLICK, nullptr, &INPUT_TO_BUTTON_TOGGLE, &RELEASE_TO_BUTTON_TOGGLE, nullptr, nullptr, nullptr, &INPUT_TO_LOGIC_BEFORE, &INPUT_TO_LOGIC_AFTER, nullptr, nullptr);

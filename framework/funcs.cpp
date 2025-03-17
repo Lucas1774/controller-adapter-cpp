@@ -1,4 +1,5 @@
 #include "funcs.h"
+#include <stdexcept>
 #include <thread>
 #include <windows.h>
 
@@ -236,17 +237,21 @@ void Functions::updateNonAnalogState(const std::vector<SDL_Event> &events, const
         }
     }
     for (const auto &event : events) {
-        if (event.type == SDL_JOYBUTTONDOWN) {
+        switch (event.type) {
+        case SDL_JOYBUTTONDOWN:
+        case SDL_JOYBUTTONUP: {
             int button = buttonMapping.at(event.jbutton.button);
-            this->handleState(buttonStateRef.at(button), true);
-        } else if (event.type == SDL_JOYBUTTONUP) {
-            int button = buttonMapping.at(event.jbutton.button);
-            this->handleState(buttonStateRef.at(button), false);
-        } else if (event.type == SDL_JOYHATMOTION) {
+            this->handleState(buttonStateRef.at(button), event.type == SDL_JOYBUTTONDOWN);
+            break;
+        }
+        case SDL_JOYHATMOTION:
             this->handleState(buttonStateRef.at(PAD_LEFT), event.jhat.value == SDL_HAT_LEFT);
             this->handleState(buttonStateRef.at(PAD_RIGHT), event.jhat.value == SDL_HAT_RIGHT);
             this->handleState(buttonStateRef.at(PAD_DOWN), event.jhat.value == SDL_HAT_DOWN);
             this->handleState(buttonStateRef.at(PAD_UP), event.jhat.value == SDL_HAT_UP);
+            break;
+        default:
+            break;
         }
     }
 }
@@ -272,7 +277,7 @@ void Functions::updateJoystickAsDigital(SDL_Joystick *joystick, Joystick &meta, 
         this->handleState(buttonStateRef.at(R2), meta.isYActive);
         break;
     default:
-        break;
+        throw std::invalid_argument("Invalid joystick");
     }
 }
 
@@ -292,7 +297,7 @@ void Functions::updateJoystickAsAnalog(SDL_Joystick *joystick, Joystick &meta, c
         meta.isYActive = std::abs(meta.y) > meta.deadZone;
         break;
     default:
-        break;
+        throw std::invalid_argument("Invalid joystick");
     }
 }
 
@@ -338,22 +343,53 @@ int Functions::generateAxisTargetWithBitMask(const ButtonGroups eightAxis) const
         up = PRESSED_STATES.find(buttonStateRef.at(LEFT_JS_UP)) != PRESSED_STATES.end();
         down = PRESSED_STATES.find(buttonStateRef.at(LEFT_JS_DOWN)) != PRESSED_STATES.end();
         bitmask = (left * LEFT_MASK) | (right * RIGHT_MASK) | (up * UP_MASK) | (down * DOWN_MASK);
-        return DIRECTION_TO_MOVE_INDEX.find(bitmask)->second;
+        return DIRECTION_TO_MOVE_INDEX.at(bitmask);
     case RIGHT_JS:
         left = PRESSED_STATES.find(buttonStateRef.at(RIGHT_JS_LEFT)) != PRESSED_STATES.end();
         right = PRESSED_STATES.find(buttonStateRef.at(RIGHT_JS_RIGHT)) != PRESSED_STATES.end();
         up = PRESSED_STATES.find(buttonStateRef.at(RIGHT_JS_UP)) != PRESSED_STATES.end();
         down = PRESSED_STATES.find(buttonStateRef.at(RIGHT_JS_DOWN)) != PRESSED_STATES.end();
         bitmask = (left * LEFT_MASK) | (right * RIGHT_MASK) | (up * UP_MASK) | (down * DOWN_MASK);
-        return DIRECTION_TO_MOVE_INDEX.find(bitmask)->second;
+        return DIRECTION_TO_MOVE_INDEX.at(bitmask);
     case PAD:
         left = PRESSED_STATES.find(buttonStateRef.at(PAD_LEFT)) != PRESSED_STATES.end();
         right = PRESSED_STATES.find(buttonStateRef.at(PAD_RIGHT)) != PRESSED_STATES.end();
         up = PRESSED_STATES.find(buttonStateRef.at(PAD_UP)) != PRESSED_STATES.end();
         down = PRESSED_STATES.find(buttonStateRef.at(PAD_DOWN)) != PRESSED_STATES.end();
         bitmask = (left * LEFT_MASK) | (right * RIGHT_MASK) | (up * UP_MASK) | (down * DOWN_MASK);
-        return DIRECTION_TO_MOVE_INDEX.find(bitmask)->second;
+        return DIRECTION_TO_MOVE_INDEX.at(bitmask);
     default:
-        return -1;
+        throw std::invalid_argument("Invalid button group");
+    }
+}
+
+bool Functions::computeGridBasedTarget(const int rowCount, const int columnCount, int &rowIndex, int &columnIndex, const int button) const {
+    switch (button) {
+    case PAD_UP:
+        if (1 == rowCount) {
+            return false;
+        }
+        rowIndex = (rowIndex + rowCount - 1) % rowCount;
+        return true;
+    case PAD_DOWN:
+        if (1 == rowCount) {
+            return false;
+        }
+        rowIndex = (rowIndex + 1) % rowCount;
+        return true;
+    case PAD_LEFT:
+        if (1 == columnCount) {
+            return false;
+        }
+        columnIndex = (columnIndex + columnCount - 1) % columnCount;
+        return true;
+    case PAD_RIGHT:
+        if (1 == columnCount) {
+            return false;
+        }
+        columnIndex = (columnIndex + 1) % columnCount;
+        return true;
+    default:
+        throw std::invalid_argument("Invalid button");
     }
 }

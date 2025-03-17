@@ -19,7 +19,6 @@ struct State {
     int overlayColumn;
     int shopRow;
     int shopColumn;
-    std::pair<int, int> mouseTarget;
 };
 
 // TODO: grab real coordinates
@@ -34,17 +33,21 @@ constexpr std::array<std::array<int, 6>, 1> OVERLAY_KEYS = {
     {{{VK_LMENU, '4', '5', '6', '7', '8'}}}};
 
 static void updateAbstractState(const int button, State &state, BufferState &bufferState, const Functions &functions) {
-    static int dummyTarget = -1;
-    static const char dummyButton = -1;
     static const std::map<int, std::function<bool()>> keyToFunction = {
-        {L1, [&functions, &state]() { return functions.computeGridBasedTarget(BUILD_MENU_KEYS, dummyTarget, state.buildMenuRow, state.buildMenuColumn, dummyButton); }},
-        {R1, [&functions, &state]() { return functions.computeGridBasedTarget(SPEED_KEYS, dummyTarget, state.speedRow, state.speedColumn, dummyButton); }},
-        {Y, [&functions, &state]() { return functions.computeGridBasedTarget(OVERLAY_KEYS, dummyTarget, state.overlayRow, state.overlayColumn, dummyButton); }}};
+        {L1, [&functions, &state]() {
+             return functions.computeGridBasedTarget(BUILD_MENU_KEYS.size(), BUILD_MENU_KEYS[0].size(), state.buildMenuRow, state.buildMenuColumn, PAD_RIGHT);
+         }},
+        {R1, [&functions, &state]() {
+             return functions.computeGridBasedTarget(SPEED_KEYS.size(), SPEED_KEYS[0].size(), state.speedRow, state.speedColumn, PAD_RIGHT);
+         }},
+        {Y, [&functions, &state]() {
+             return functions.computeGridBasedTarget(OVERLAY_KEYS.size(), OVERLAY_KEYS[0].size(), state.overlayRow, state.overlayColumn, PAD_RIGHT);
+         }}};
 
     if (auto it = keyToFunction.find(button); it != keyToFunction.end()) {
         it->second();
     } else if (functions.isBufferFree(DEFAULT_SECOND_INPUT_DELAY_MILLIS, DEFAULT_SUBSEQUENT_INPUT_DELAY_MILLIS, button, bufferState)) {
-        functions.computeGridBasedTarget(SHOP_COORDINATES, state.mouseTarget, state.shopRow, state.speedColumn, button);
+        functions.computeGridBasedTarget(SHOP_COORDINATES.size(), SHOP_COORDINATES[0].size(), state.shopRow, state.shopColumn, button);
     }
 }
 
@@ -72,8 +75,7 @@ void run(std::unordered_map<int, int> &buttonState,
         .overlayRow = 0,
         .overlayColumn = 0,
         .shopRow = 0,
-        .shopColumn = 0,
-        .mouseTarget = {}};
+        .shopColumn = 0};
     BufferState bufferState = {
         .lastPressed = now,
         .lastExecuted = now,
@@ -83,8 +85,6 @@ void run(std::unordered_map<int, int> &buttonState,
     const auto INPUT_TO_KEY_TAP = std::unordered_map<int, std::function<WORD()>>{
         {R1, [&state]() { return SPEED_KEYS[state.speedRow][state.speedColumn]; }},
         {L1, [&state]() { return BUILD_MENU_KEYS[state.buildMenuRow][state.buildMenuColumn]; }},
-        {R2, []() { return 'E'; }},
-        {L2, []() { return 'Q'; }},
         {R3, []() { return 'C'; }},
         {L3, []() { return 'R'; }},
         {SELECT, []() { return 'V'; }},
@@ -95,15 +95,17 @@ void run(std::unordered_map<int, int> &buttonState,
         {LEFT_JS_RIGHT, []() { return 'D'; }},
         {LEFT_JS_UP, []() { return 'W'; }},
         {LEFT_JS_DOWN, []() { return 'S'; }},
+        {R2, []() { return 'E'; }},
+        {L2, []() { return 'Q'; }},
         {Y, [&state]() { return OVERLAY_KEYS[state.overlayRow][state.overlayColumn]; }}};
     const auto INPUT_TO_MOUSE_CLICK = std::unordered_map<int, std::function<int()>>{
         {A, []() { return SDL_BUTTON_LEFT; }},
         {B, []() { return SDL_BUTTON_RIGHT; }}};
     const auto INPUT_TO_MOUSE_MOVE = std::unordered_map<int, std::function<std::pair<int, int>()>>{
-        {PAD_LEFT, [&state]() { return state.mouseTarget; }},
-        {PAD_RIGHT, [&state]() { return state.mouseTarget; }},
-        {PAD_UP, [&state]() { return state.mouseTarget; }},
-        {PAD_DOWN, [&state]() { return state.mouseTarget; }}};
+        {PAD_LEFT, [&state]() { return SHOP_COORDINATES[state.shopRow][state.shopColumn]; }},
+        {PAD_RIGHT, [&state]() { return SHOP_COORDINATES[state.shopRow][state.shopColumn]; }},
+        {PAD_UP, [&state]() { return SHOP_COORDINATES[state.shopRow][state.shopColumn]; }},
+        {PAD_DOWN, [&state]() { return SHOP_COORDINATES[state.shopRow][state.shopColumn]; }}};
     const auto INPUT_TO_LOGIC_AFTER = std::unordered_map<int, std::function<void()>>{
         {PAD_LEFT, [&functions, &state, &bufferState]() { updateAbstractState(PAD_LEFT, state, bufferState, functions); }},
         {PAD_RIGHT, [&functions, &state, &bufferState]() { updateAbstractState(PAD_RIGHT, state, bufferState, functions); }},

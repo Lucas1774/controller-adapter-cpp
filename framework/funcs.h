@@ -118,35 +118,25 @@ class Functions {
     /// @return the index of the pressed virtual button, where 0 is the bottom-left button and 7 is the bottom one.
     int generateAxisTargetWithBitMask(const ButtonGroups eightAxis) const;
 
-    /// @brief updates target based on an adjacency matrix to update dynamic state in callback before input action.
-    /// Should be used in callback before input maps for inputs mapped to dynamic targets.
+    /// @brief updates array index to control state.
+    /// Should be used in callback before or after input maps for inputs mapped to dynamic targets defined at the array the index references.
     /// @tparam Elements size of the target array.
     /// @param adjacencyMatrix adjacency matrix to determine the next target based on the current target and the input button.
-    /// @param target typically a pair of coordinates.
-    /// @param newTarget to be updated by the function.
     /// @param index current index in the array. To be updated by the function.
     /// @param button input button to determine the next target in the array.
     /// @return true if a target update was made and thus a call should be made.
-    template <typename Target, size_t Elements>
-    bool computeAdjacencyMatrixBasedTarget(
-        const std::array<std::array<int, Elements>, Elements> &adjacencyMatrix,
-        const std::array<Target, Elements> &target,
-        Target &newTarget, int &index, const int button) const;
+    template <size_t Elements>
+    bool computeAdjacencyMatrixBasedTarget(const std::array<std::array<int, Elements>, Elements> &adjacencyMatrix, int &index, const int button) const;
 
-    /// @brief updates target based on a 2D coordinate grid to update dynamic state in callback before input action.
-    /// Should be used in callback before input maps for inputs mapped to dynamic targets.
-    /// @tparam Rows rows of the coordinate grid.
-    /// @tparam Cols columns of the coordinate grid.
-    /// @param target typically a pair of coordinates.
-    /// @param newTarget to be updated by the function.
-    /// @param rowIndex current row index in the grid. To be updated by the function.
-    /// @param columnIndex current column index in the grid. To be updated by the function.
+    /// @brief updates orthogonal matrix indexes to control state.
+    /// Should be used in callback before or after input maps for inputs mapped to dynamic targets defined at the matrix the indexes reference.
+    /// @param rowCount matrix width.
+    /// @param columnCount matrix height.
+    /// @param rowIndex current row index in the matrix. To be updated by the function.
+    /// @param columnIndex current column index in the matrix. To be updated by the function.
     /// @param button input button to determine the next target in the grid.
     /// @return true if a target update was made and thus a call should be made.
-    template <typename Target, size_t Rows, size_t Cols>
-    bool computeGridBasedTarget(
-        const std::array<std::array<Target, Cols>, Rows> &target,
-        Target &newTarget, int &rowIndex, int &columnIndex, const int button) const;
+    bool computeGridBasedTarget(const int rowCount, const int columnCount, int &rowIndex, int &columnIndex, const int button) const;
 
   private:
     const std::unordered_map<int, DWORD> BUTTON_ID_TO_PRESS_EVENT = {

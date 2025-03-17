@@ -12,7 +12,6 @@ namespace swarm {
 
 struct State {
     int cardIndex;
-    std::pair<int, int> mouseTarget;
 };
 
 static constexpr std::array<std::pair<int, int>, 4> CARD_COORDINATES = {
@@ -27,7 +26,7 @@ static bool updateAbstractState(const int button, State &state, BufferState &buf
     if (!functions.isBufferFree(DEFAULT_SECOND_INPUT_DELAY_MILLIS, DEFAULT_SUBSEQUENT_INPUT_DELAY_MILLIS, button, bufferState)) {
         return false;
     }
-    return functions.computeAdjacencyMatrixBasedTarget(CARD_ADJACENCY_MATRIX, CARD_COORDINATES, state.mouseTarget, state.cardIndex, button);
+    return functions.computeAdjacencyMatrixBasedTarget(CARD_ADJACENCY_MATRIX, state.cardIndex, button);
 }
 
 void run(std::unordered_map<int, int> &buttonState,
@@ -60,8 +59,7 @@ void run(std::unordered_map<int, int> &buttonState,
     const auto now = std::chrono::steady_clock::now();
 
     State state = {
-        .cardIndex = 1,
-        .mouseTarget = {}};
+        .cardIndex = 3};
     BufferState bufferState = {
         .lastPressed = now,
         .lastExecuted = now,
@@ -80,10 +78,10 @@ void run(std::unordered_map<int, int> &buttonState,
         {B, [] { return VK_TAB; }},
         {R2, [] { return 'T'; }}};
     const auto INPUT_TO_MOUSE_MOVE = std::unordered_map<int, std::function<std::pair<int, int>()>>{
-        {PAD_LEFT, [&state] { return state.mouseTarget; }},
-        {PAD_RIGHT, [&state] { return state.mouseTarget; }},
-        {PAD_UP, [&state] { return state.mouseTarget; }},
-        {PAD_DOWN, [&state] { return state.mouseTarget; }},
+        {PAD_LEFT, [&state] { return CARD_COORDINATES[state.cardIndex]; }},
+        {PAD_RIGHT, [&state] { return CARD_COORDINATES[state.cardIndex]; }},
+        {PAD_UP, [&state] { return CARD_COORDINATES[state.cardIndex]; }},
+        {PAD_DOWN, [&state] { return CARD_COORDINATES[state.cardIndex]; }},
         {R3, [] { return CENTER; }}};
     const auto INPUT_TO_MOUSE_CLICK = std::unordered_map<int, std::function<int()>>{
         {A, [] { return SDL_BUTTON_LEFT; }}};
@@ -97,11 +95,12 @@ void run(std::unordered_map<int, int> &buttonState,
         {PAD_RIGHT, [&functions, &state, &bufferState]() { return updateAbstractState(PAD_RIGHT, state, bufferState, functions); }},
         {PAD_UP, [&functions, &state, &bufferState]() { return updateAbstractState(PAD_UP, state, bufferState, functions); }},
         {PAD_DOWN, [&functions, &state, &bufferState]() { return updateAbstractState(PAD_DOWN, state, bufferState, functions); }}};
+    const auto INPUT_TO_LOGIC_AFTER = std::unordered_map<int, std::function<void()>>{{A, [&state]() { state.cardIndex = 3; }}};
     const auto RELEASE_TO_LOGIC_AFTER = std::unordered_map<int, std::function<void()>>{
         {R1, [&currentRadius, MAX_RADIUS_HIGH_PRECISION_OFF]() { currentRadius = MAX_RADIUS_HIGH_PRECISION_OFF; }},
         {L1, [&currentRadius, MAX_RADIUS_HIGH_PRECISION_OFF]() { currentRadius = MAX_RADIUS_HIGH_PRECISION_OFF; }}};
 
-    functions.setMaps(&buttonState, &INPUT_TO_MOUSE_MOVE, nullptr, &INPUT_TO_MOUSE_CLICK, nullptr, nullptr, nullptr, &INPUT_TO_KEY_TAP, &RELEASE_TO_KEY_TAP, &INPUT_TO_KEY_HOLD, &INPUT_TO_LOGIC_BEFORE, nullptr, nullptr, &RELEASE_TO_LOGIC_AFTER);
+    functions.setMaps(&buttonState, &INPUT_TO_MOUSE_MOVE, nullptr, &INPUT_TO_MOUSE_CLICK, nullptr, nullptr, nullptr, &INPUT_TO_KEY_TAP, &RELEASE_TO_KEY_TAP, &INPUT_TO_KEY_HOLD, &INPUT_TO_LOGIC_BEFORE, &INPUT_TO_LOGIC_AFTER, nullptr, &RELEASE_TO_LOGIC_AFTER);
 
     try {
         auto lastUpdateTime = std::chrono::steady_clock::now();

@@ -13,7 +13,7 @@
 namespace tft {
 
 enum class MouseMovementWithPadMode {
-    BOARD = 0,
+    BOARD,
     ITEMS,
     SHOP,
     CARDS,
@@ -33,7 +33,6 @@ struct State {
     int lockIndex;
     MouseMovementWithPadMode mode;
     MouseMovementWithPadMode previous_mode;
-    std::pair<int, int> mouseTarget;
 };
 
 static constexpr std::array<std::pair<int, int>, 8> MOVE_COORDINATES = {
@@ -76,7 +75,6 @@ static bool updateAbstractState(const int button, State &state, BufferState &buf
         state.mode = MouseMovementWithPadMode::BOARD;
         state.boardRow = 0;
         state.boardColumn = 0;
-        state.mouseTarget = BOARD_COORDINATES[0][0];
         return true;
     }
 
@@ -104,28 +102,36 @@ static bool updateAbstractState(const int button, State &state, BufferState &buf
                 state.boardColumn = (state.boardColumn + 1) % 9;
             }
         }
-        state.mouseTarget = BOARD_COORDINATES[state.boardRow][state.boardColumn];
         return true;
     }
 
     static const std::map<MouseMovementWithPadMode, std::function<bool()>> modeToFunction = {
         {MouseMovementWithPadMode::ITEMS, [&functions, &state, &button]() {
-             return functions.computeGridBasedTarget(ITEM_COORDINATES, state.mouseTarget, state.itemRow, state.itemColumn, button);
+             return functions.computeGridBasedTarget(ITEM_COORDINATES.size(), ITEM_COORDINATES[0].size(), state.itemRow, state.itemColumn, button);
          }},
         {MouseMovementWithPadMode::SHOP, [&functions, &state, &button]() {
-             return functions.computeGridBasedTarget(SHOP_COORDINATES, state.mouseTarget, state.shopRow, state.shopColumn, button);
+             return functions.computeGridBasedTarget(SHOP_COORDINATES.size(), SHOP_COORDINATES[0].size(), state.shopRow, state.shopColumn, button);
          }},
         {MouseMovementWithPadMode::CARDS, [&functions, &state, &button]() {
-             return functions.computeGridBasedTarget(CARD_COORDINATES, state.mouseTarget, state.cardRow, state.cardColumn, button);
+             return functions.computeGridBasedTarget(CARD_COORDINATES.size(), CARD_COORDINATES[0].size(), state.cardRow, state.cardColumn, button);
          }},
         {MouseMovementWithPadMode::LOCK, [&functions, &state, &button]() {
-             return functions.computeAdjacencyMatrixBasedTarget(LOCK_ADJACENCY_MATRIX, LOCK_COORDINATES, state.mouseTarget, state.lockIndex, button);
+             return functions.computeAdjacencyMatrixBasedTarget(LOCK_ADJACENCY_MATRIX, state.lockIndex, button);
          }}};
 
-    if (auto it = modeToFunction.find(state.mode); it != modeToFunction.end()) {
-        return it->second();
-    }
-    return false;
+    return modeToFunction.at(state.mode)();
+}
+
+static std::pair<int, int> getMouseTarget(const State &state) {
+
+    static const std::unordered_map<MouseMovementWithPadMode, std::function<std::pair<int, int>()>> modeToStateDependingCoordinates = {
+        {MouseMovementWithPadMode::BOARD, [&state] { return BOARD_COORDINATES[state.boardRow][state.boardColumn]; }},
+        {MouseMovementWithPadMode::ITEMS, [&state] { return ITEM_COORDINATES[state.itemRow][state.itemColumn]; }},
+        {MouseMovementWithPadMode::SHOP, [&state] { return SHOP_COORDINATES[state.shopRow][state.shopColumn]; }},
+        {MouseMovementWithPadMode::CARDS, [&state] { return CARD_COORDINATES[state.cardRow][state.cardColumn]; }},
+        {MouseMovementWithPadMode::LOCK, [&state] { return LOCK_COORDINATES[state.lockIndex]; }}};
+
+    return modeToStateDependingCoordinates.at(state.mode)();
 }
 
 void run(std::unordered_map<int, int> &buttonState,
@@ -155,8 +161,7 @@ void run(std::unordered_map<int, int> &buttonState,
         .cardColumn = 1,
         .lockIndex = 0,
         .mode = MouseMovementWithPadMode::BOARD,
-        .previous_mode = MouseMovementWithPadMode::BOARD,
-        .mouseTarget = {}};
+        .previous_mode = MouseMovementWithPadMode::BOARD};
     BufferState buffer_state = {
         .lastPressed = now,
         .lastExecuted = now,
@@ -173,17 +178,17 @@ void run(std::unordered_map<int, int> &buttonState,
     const auto INPUT_TO_MOUSE_CLICK = std::unordered_map<int, std::function<int()>>{
         {SELECT, [] { return SDL_BUTTON_RIGHT; }}};
     const auto INPUT_TO_MOUSE_MOVE = std::unordered_map<int, std::function<std::pair<int, int>()>>{
-        {PAD_LEFT, [&state] { return state.mouseTarget; }},
-        {PAD_RIGHT, [&state] { return state.mouseTarget; }},
-        {PAD_UP, [&state] { return state.mouseTarget; }},
-        {PAD_DOWN, [&state] { return state.mouseTarget; }},
-        {R1, [&state] { return state.mouseTarget; }},
-        {L1, [&state] { return state.mouseTarget; }},
-        {R3, [&state] { return state.mouseTarget; }},
-        {L3, [&state] { return state.mouseTarget; }}};
+        {PAD_LEFT, [&state] { return getMouseTarget(state); }},
+        {PAD_RIGHT, [&state] { return getMouseTarget(state); }},
+        {PAD_UP, [&state] { return getMouseTarget(state); }},
+        {PAD_DOWN, [&state] { return getMouseTarget(state); }},
+        {R1, [&state] { return getMouseTarget(state); }},
+        {L1, [&state] { return getMouseTarget(state); }},
+        {R3, [&state] { return getMouseTarget(state); }},
+        {L3, [&state] { return getMouseTarget(state); }}};
     const auto RELEASE_TO_MOUSE_MOVE = std::unordered_map<int, std::function<std::pair<int, int>()>>{
-        {R1, [&state] { return state.mouseTarget; }},
-        {L1, [&state] { return state.mouseTarget; }}};
+        {R1, [&state] { return getMouseTarget(state); }},
+        {L1, [&state] { return getMouseTarget(state); }}};
     const auto INPUT_TO_LOGIC_BEFORE = std::unordered_map<int, std::function<bool()>>{
         {PAD_LEFT, [&functions, &state, &buffer_state]() { return updateAbstractState(PAD_LEFT, state, buffer_state, functions); }},
         {PAD_RIGHT, [&functions, &state, &buffer_state]() { return updateAbstractState(PAD_RIGHT, state, buffer_state, functions); }},
@@ -215,57 +220,47 @@ void run(std::unordered_map<int, int> &buttonState,
                 if (hasTriggers) {
                     functions.updateJoystickAsDigital(joystick, triggers, TRIGGERS);
                 }
-                // the code below is kind of horrible. It is what it is.
-                // for item and board mode toggling, we remember positions to make it easier to build full items
+                // the code below is kind of horrible. It is what it is
+                // for item and board mode toggling, we remember positions to make it easier to build full items (no index reset)
                 if (buttonState[L1] == JUST_PRESSED) {
                     state.mode = MouseMovementWithPadMode::ITEMS;
-                    state.mouseTarget = ITEM_COORDINATES[state.itemColumn][state.itemRow];
                 } else if (buttonState[L1] == JUST_RELEASED) {
                     state.mode = MouseMovementWithPadMode::BOARD;
-                    state.mouseTarget = BOARD_COORDINATES[state.boardRow][state.boardColumn];
-                    // for shop and board mode toggling, we always go to bench and to middle card, that is also the "show own board" button location
-                    // we don't necessarily go back to board mode. If card mode was set as "previous", we go there.
+                    // for shop and board mode toggling, we always go to bench and to middle card (also the "show own board" button location), respectively
+                    // we don't necessarily go back to board mode. If card mode was set as "previous", we go there
                     // the idea is to easily show the board when going to pick a card, without leaving card selecting mode
                 } else if (buttonState[R1] == JUST_PRESSED) {
                     state.mode = MouseMovementWithPadMode::SHOP;
                     state.shopColumn = 2;
-                    state.mouseTarget = SHOP_COORDINATES[0][state.shopColumn];
                 } else if (buttonState[R1] == JUST_RELEASED) {
                     state.mode = state.previous_mode;
                     if (state.mode == MouseMovementWithPadMode::BOARD) {
                         state.boardRow = 0;
                         state.boardColumn = 0;
-                        state.mouseTarget = BOARD_COORDINATES[0][0];
-                    } else if (state.mode == MouseMovementWithPadMode::CARDS) {
-                        state.mouseTarget = CARD_COORDINATES[state.cardRow][state.cardColumn];
                     }
                     // for card and board mode toggling, we also go to the bench when going to board mode, and to the middle when going to card mode, because why not
-                    // we save the state in previous state in case we want to go to item state after.
+                    // we save the state in previous state in case we want to go to item state after
                 } else if (buttonState[R3] == JUST_PRESSED) {
                     if (state.mode == MouseMovementWithPadMode::CARDS) {
                         state.mode = MouseMovementWithPadMode::BOARD;
                         state.previous_mode = MouseMovementWithPadMode::BOARD;
                         state.boardRow = 0;
                         state.boardColumn = 0;
-                        state.mouseTarget = BOARD_COORDINATES[0][0];
                     } else {
                         state.mode = MouseMovementWithPadMode::CARDS;
                         state.previous_mode = MouseMovementWithPadMode::CARDS;
                         state.cardRow = 0;
                         state.cardColumn = 1;
-                        state.mouseTarget = CARD_COORDINATES[state.cardRow][state.cardColumn];
                     }
-                    // for lock and board mode toggling, also to bench for convenience, and also always to lock
+                    // for lock and board mode toggling, we also go to bench for convenience, and also always to lock
                 } else if (buttonState[L3] == JUST_PRESSED) {
                     if (state.mode == MouseMovementWithPadMode::LOCK) {
                         state.mode = MouseMovementWithPadMode::BOARD;
                         state.boardRow = 0;
                         state.boardColumn = 0;
-                        state.mouseTarget = BOARD_COORDINATES[0][0];
                     } else {
                         state.mode = MouseMovementWithPadMode::LOCK;
                         state.lockIndex = 0;
-                        state.mouseTarget = LOCK_COORDINATES[state.lockIndex];
                     }
                 }
 
@@ -301,9 +296,9 @@ void run(std::unordered_map<int, int> &buttonState,
                         lastUpdateTime = std::chrono::steady_clock::now();
                     }
                 } else if (leftJoystick.isXActive || leftJoystick.isYActive) { // leftJoystick isActive breaks the program semantics:
-                                                                               // The joystick has been "digitalized", however, the param is at hand and improves performance, so might as well use it.
-                    state.mouseTarget = MOVE_COORDINATES[functions.generateAxisTargetWithBitMask(LEFT_JS)];
-                    functions.moveMouse(state.mouseTarget.first, state.mouseTarget.second, resScalingX, resScalingY);
+                                                                               // The joystick has been "digitalized", however, the param is at hand and improves performance, so might as well use it
+                    auto [x, y] = MOVE_COORDINATES[functions.generateAxisTargetWithBitMask(LEFT_JS)];
+                    functions.moveMouse(x, y, resScalingX, resScalingY);
                     if (std::chrono::steady_clock::now() - lastUpdateTime > std::chrono::milliseconds(MILLIS_PER_FRAME)) {
                         functions.click(SDL_BUTTON_RIGHT);
                         lastUpdateTime = std::chrono::steady_clock::now();
