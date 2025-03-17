@@ -38,14 +38,12 @@ struct State {
 
 static constexpr std::array<std::pair<int, int>, 8> MOVE_COORDINATES = {
     {{483, 656}, {473, 438}, {542, 175}, {927, 180}, {1286, 198}, {1418, 476}, {1447, 671}, {956, 679}}};
-
 static constexpr std::array<std::array<std::pair<int, int>, 9>, 5> BOARD_COORDINATES = {
     {{{{427, 756}, {544, 751}, {659, 757}, {776, 754}, {895, 756}, {1011, 754}, {1125, 754}, {1246, 752}, {1356, 752}}},
      {{{583, 632}, {699, 630}, {839, 634}, {960, 637}, {1096, 637}, {1214, 642}, {1340, 644}}},
      {{{535, 555}, {663, 559}, {783, 559}, {904, 565}, {1027, 564}, {1148, 561}, {1265, 565}}},
      {{{611, 482}, {727, 487}, {845, 489}, {961, 485}, {1081, 484}, {1189, 485}, {1314, 489}}},
      {{{567, 423}, {680, 426}, {794, 427}, {904, 427}, {1023, 429}, {1133, 422}, {1246, 420}}}}};
-
 static constexpr std::array<std::array<std::pair<int, int>, 2>, 10> ITEM_COORDINATES = {
     {{{{30, 298}, {80, 298}}},
      {{{30, 349}, {80, 349}}},
@@ -57,17 +55,13 @@ static constexpr std::array<std::array<std::pair<int, int>, 2>, 10> ITEM_COORDIN
      {{{30, 654}, {80, 654}}},
      {{{30, 706}, {80, 706}}},
      {{{30, 754}, {80, 754}}}}};
-
 static constexpr std::array<std::array<std::pair<int, int>, 5>, 1> SHOP_COORDINATES = {
     {{{{503, 982}, {714, 982}, {923, 985}, {1151, 984}, {1348, 987}}}}};
-
 static constexpr std::array<std::array<std::pair<int, int>, 3>, 2> CARD_COORDINATES = {
     {{{{553, 580}, {963, 580}, {1380, 583}}},
      {{{552, 865}, {959, 866}, {1365, 865}}}}};
-
 static constexpr std::array<std::pair<int, int>, 3> LOCK_COORDINATES = {
     {{1450, 905}, {1323, 948}, {1327, 1027}}};
-
 static constexpr std::array<std::array<int, 3>, 3> LOCK_ADJACENCY_MATRIX = {
     {{NONE, PAD_DOWN, PAD_UP},   // lock
      {PAD_UP, NONE, PAD_DOWN},   // 1
@@ -176,10 +170,8 @@ void run(std::unordered_map<int, int> &buttonState,
         {R2, [] { return 'R'; }},
         {L2, [] { return 'Q'; }},
         {START, [] { return 'W'; }}};
-
     const auto INPUT_TO_MOUSE_CLICK = std::unordered_map<int, std::function<int()>>{
         {SELECT, [] { return SDL_BUTTON_RIGHT; }}};
-
     const auto INPUT_TO_MOUSE_MOVE = std::unordered_map<int, std::function<std::pair<int, int>()>>{
         {PAD_LEFT, [&state] { return state.mouseTarget; }},
         {PAD_RIGHT, [&state] { return state.mouseTarget; }},
@@ -189,24 +181,14 @@ void run(std::unordered_map<int, int> &buttonState,
         {L1, [&state] { return state.mouseTarget; }},
         {R3, [&state] { return state.mouseTarget; }},
         {L3, [&state] { return state.mouseTarget; }}};
-
     const auto RELEASE_TO_MOUSE_MOVE = std::unordered_map<int, std::function<std::pair<int, int>()>>{
         {R1, [&state] { return state.mouseTarget; }},
         {L1, [&state] { return state.mouseTarget; }}};
-
     const auto INPUT_TO_LOGIC_BEFORE = std::unordered_map<int, std::function<bool()>>{
-        {PAD_LEFT, [&functions, &state, &buffer_state]() {
-             return updateAbstractState(PAD_LEFT, state, buffer_state, functions);
-         }},
-        {PAD_RIGHT, [&functions, &state, &buffer_state]() {
-             return updateAbstractState(PAD_RIGHT, state, buffer_state, functions);
-         }},
-        {PAD_UP, [&functions, &state, &buffer_state]() {
-             return updateAbstractState(PAD_UP, state, buffer_state, functions);
-         }},
-        {PAD_DOWN, [&functions, &state, &buffer_state]() {
-             return updateAbstractState(PAD_DOWN, state, buffer_state, functions);
-         }}};
+        {PAD_LEFT, [&functions, &state, &buffer_state]() { return updateAbstractState(PAD_LEFT, state, buffer_state, functions); }},
+        {PAD_RIGHT, [&functions, &state, &buffer_state]() { return updateAbstractState(PAD_RIGHT, state, buffer_state, functions); }},
+        {PAD_UP, [&functions, &state, &buffer_state]() { return updateAbstractState(PAD_UP, state, buffer_state, functions); }},
+        {PAD_DOWN, [&functions, &state, &buffer_state]() { return updateAbstractState(PAD_DOWN, state, buffer_state, functions); }}};
 
     functions.setMaps(&buttonState, &INPUT_TO_MOUSE_MOVE, &RELEASE_TO_MOUSE_MOVE, &INPUT_TO_MOUSE_CLICK, nullptr, nullptr, nullptr, &INPUT_TO_KEY_TAP, nullptr, nullptr, &INPUT_TO_LOGIC_BEFORE, nullptr, nullptr, nullptr);
 
@@ -329,9 +311,8 @@ void run(std::unordered_map<int, int> &buttonState,
                 }
             }
 
-            std::this_thread::sleep_for(
-                std::chrono::microseconds(std::max(
-                    10000 - std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - loopStartTime).count(), 0LL)));
+            std::this_thread::sleep_for(std::chrono::microseconds(std::max(
+                10000 - std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - loopStartTime).count(), 0LL)));
         }
     } catch (const std::exception &e) {
         std::cerr << "Exception: " << e.what() << std::endl;

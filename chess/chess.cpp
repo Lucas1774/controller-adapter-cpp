@@ -36,13 +36,10 @@ static constexpr std::array<std::array<std::pair<int, int>, 8>, 8> BOARD_COORDIN
      {{{295, 712}, {411, 713}, {510, 709}, {620, 712}, {724, 703}, {830, 712}, {930, 709}, {1035, 709}}},
      {{{308, 819}, {412, 822}, {518, 820}, {623, 822}, {724, 824}, {830, 822}, {934, 823}, {1042, 823}}},
      {{{304, 929}, {413, 928}, {511, 928}, {624, 925}, {725, 924}, {829, 925}, {937, 926}, {1039, 928}}}}};
-
 static constexpr std::array<std::array<std::pair<int, int>, 2>, 1> RESIGN_YES_NO = {
     {{{{1176, 510}, {1120, 505}}}}};
-
 static constexpr std::array<std::array<std::pair<int, int>, 2>, 1> DRAW_YES_NO = {
     {{{{1182, 450}, {1118, 448}}}}};
-
 static constexpr std::pair<int, int> PLAY_AGAIN = {1255, 539};
 static constexpr std::pair<int, int> REMATCH = {1431, 536};
 static constexpr std::pair<int, int> RESIGN = {1177, 570};
@@ -115,19 +112,10 @@ void run(std::unordered_map<int, int> &buttonState,
         {R1, [&functions, resScalingX, resScalingY]() { functions.moveMouse(PLAY_AGAIN.first,PLAY_AGAIN.second, resScalingX, resScalingY); return true; }},
         {X, [&functions, resScalingX, resScalingY]() { functions.moveMouse(DRAW.first,DRAW.second, resScalingX, resScalingY); return true; }},
         {Y, [&functions, resScalingX, resScalingY]() { functions.moveMouse(RESIGN.first,RESIGN.second, resScalingX, resScalingY); return true; }},
-        {PAD_LEFT, [&functions, &programState, &bufferState]() {
-             return updateAbstractState(PAD_LEFT, programState, bufferState, functions);
-         }},
-        {PAD_RIGHT, [&functions, &programState, &bufferState]() {
-             return updateAbstractState(PAD_RIGHT, programState, bufferState, functions);
-         }},
-        {PAD_UP, [&functions, &programState, &bufferState]() {
-             return updateAbstractState(PAD_UP, programState, bufferState, functions);
-         }},
-        {PAD_DOWN, [&functions, &programState, &bufferState]() {
-             return updateAbstractState(PAD_DOWN, programState, bufferState, functions);
-         }},
-    };
+        {PAD_LEFT, [&functions, &programState, &bufferState]() { return updateAbstractState(PAD_LEFT, programState, bufferState, functions); }},
+        {PAD_RIGHT, [&functions, &programState, &bufferState]() { return updateAbstractState(PAD_RIGHT, programState, bufferState, functions); }},
+        {PAD_UP, [&functions, &programState, &bufferState]() { return updateAbstractState(PAD_UP, programState, bufferState, functions); }},
+        {PAD_DOWN, [&functions, &programState, &bufferState]() { return updateAbstractState(PAD_DOWN, programState, bufferState, functions); }}};
     const auto INPUT_TO_LOGIC_AFTER = std::unordered_map<int, std::function<bool()>>{
         {L1, [&functions, &programState, resScalingX, resScalingY]() { auto [x, y] = BOARD_COORDINATES[programState.boardRow][programState.boardColumn];
             functions.moveMouse(x, y, resScalingX, resScalingY); return true; }},
@@ -138,8 +126,7 @@ void run(std::unordered_map<int, int> &buttonState,
         {Y, [&functions, &programState, resScalingX, resScalingY]() { programState.mode = Mode::RESIGN; auto [x, y] = RESIGN_YES_NO[0][programState.resignColumn];
             functions.moveMouse(x, y, resScalingX, resScalingY); return true; }},
         {A, [&programState]() { if (programState.mode != Mode::BOARD) {programState.mode = Mode::BOARD; programState.drawColumn = 0; programState.resignColumn = 0;}
-        return true; }},
-    };
+        return true; }}};
 
     functions.setMaps(&buttonState, &INPUT_TO_MOUSE_MOVE, nullptr, &INPUT_TO_BUTTON_CLICK, nullptr, &INPUT_TO_BUTTON_TOGGLE, &RELEASE_TO_BUTTON_TOGGLE, nullptr, nullptr, nullptr, &INPUT_TO_LOGIC_BEFORE, &INPUT_TO_LOGIC_AFTER, nullptr, nullptr);
 

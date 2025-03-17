@@ -17,7 +17,6 @@ struct State {
 
 static constexpr std::array<std::pair<int, int>, 4> CARD_COORDINATES = {
     {{720, CENTER_Y}, CENTER, {1200, CENTER_Y}, {CENTER_X, 825}}};
-
 static constexpr std::array<std::array<int, 4>, 4> CARD_ADJACENCY_MATRIX = {
     {{NONE, PAD_RIGHT, PAD_LEFT, PAD_DOWN}, // left
      {PAD_LEFT, NONE, PAD_RIGHT, PAD_DOWN}, // center
@@ -97,12 +96,10 @@ void run(std::unordered_map<int, int> &buttonState,
         {PAD_LEFT, [&functions, &state, &bufferState]() { return updateAbstractState(PAD_LEFT, state, bufferState, functions); }},
         {PAD_RIGHT, [&functions, &state, &bufferState]() { return updateAbstractState(PAD_RIGHT, state, bufferState, functions); }},
         {PAD_UP, [&functions, &state, &bufferState]() { return updateAbstractState(PAD_UP, state, bufferState, functions); }},
-        {PAD_DOWN, [&functions, &state, &bufferState]() { return updateAbstractState(PAD_DOWN, state, bufferState, functions); }},
-    };
+        {PAD_DOWN, [&functions, &state, &bufferState]() { return updateAbstractState(PAD_DOWN, state, bufferState, functions); }}};
     const auto RELEASE_TO_LOGIC_AFTER = std::unordered_map<int, std::function<bool()>>{
         {R1, [&currentRadius, MAX_RADIUS_HIGH_PRECISION_OFF]() { currentRadius = MAX_RADIUS_HIGH_PRECISION_OFF; return true; }},
-        {L1, [&currentRadius, MAX_RADIUS_HIGH_PRECISION_OFF]() { currentRadius = MAX_RADIUS_HIGH_PRECISION_OFF; return true; }},
-    };
+        {L1, [&currentRadius, MAX_RADIUS_HIGH_PRECISION_OFF]() { currentRadius = MAX_RADIUS_HIGH_PRECISION_OFF; return true; }}};
 
     functions.setMaps(&buttonState, &INPUT_TO_MOUSE_MOVE, nullptr, &INPUT_TO_MOUSE_CLICK, nullptr, nullptr, nullptr, &INPUT_TO_KEY_TAP, &RELEASE_TO_KEY_TAP, &INPUT_TO_KEY_HOLD, &INPUT_TO_LOGIC_BEFORE, nullptr, nullptr, &RELEASE_TO_LOGIC_AFTER);
 
@@ -177,10 +174,12 @@ void run(std::unordered_map<int, int> &buttonState,
                 }
             }
 
-            std::this_thread::sleep_for(std::chrono::microseconds(std::max(10000 - std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - loopStartTime).count(), 0LL)));
+            std::this_thread::sleep_for(std::chrono::microseconds(std::max(
+                10000 - std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - loopStartTime).count(), 0LL)));
         }
     } catch (const std::exception &e) {
         std::cerr << "Exception: " << e.what() << std::endl;
     }
 }
+
 } // namespace swarm
