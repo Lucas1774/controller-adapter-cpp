@@ -174,13 +174,21 @@ void Functions::handleToKeyTap(const int &input, const int eventType, const int 
 
 void Functions::handleToKeyHold(const int &input, const int key) const {
     int input_state = (*this->buttonState).at(input);
-    int actualKey = key != -1 ? key : (*this->input_to_key_hold).at(input)();
-    if (input_state == JUST_PRESSED && this->actionCallback(input, true, true)) {
-        this->sendInput(actualKey, KEYEVENTF_SCANCODE);
-        this->actionCallback(input, true, false);
-    } else if (input_state == JUST_RELEASED && this->actionCallback(input, false, true)) {
-        this->sendInput(actualKey, KEYEVENTF_KEYUP);
-        this->actionCallback(input, false, false);
+    bool on_press;
+    int eventFlag;
+    if (input_state == JUST_PRESSED) {
+        on_press = true;
+        eventFlag = KEYEVENTF_SCANCODE;
+    } else if (input_state == JUST_RELEASED) {
+        on_press = false;
+        eventFlag = KEYEVENTF_KEYUP;
+    } else {
+        return;
+    }
+    if (this->actionCallback(input, on_press, true)) {
+        int actualKey = key != -1 ? key : (*this->input_to_key_hold).at(input)();
+        this->sendInput(actualKey, eventFlag);
+        this->actionCallback(input, on_press, false);
     }
 }
 
