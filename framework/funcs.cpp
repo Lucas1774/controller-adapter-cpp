@@ -5,7 +5,7 @@
 
 namespace functions {
 
-namespace detail {
+namespace {
 
 const std::unordered_map<int, DWORD> BUTTON_ID_TO_PRESS_EVENT = {
     {SDL_BUTTON_LEFT, MOUSEEVENTF_LEFTDOWN},
@@ -24,7 +24,7 @@ void sendInput(const int key, const DWORD flags) {
     SendInput(1, &ip, sizeof(INPUT));
 }
 
-bool actionCallbackBefore(const Mappings &mappings, const int &input, bool on_press) {
+bool actionCallbackBefore(const functions::Mappings &mappings, const int &input, const bool on_press) {
     const auto &map = on_press ? mappings.input_to_logic_before : mappings.release_to_logic_before;
     if (const auto &action = map.find(input); action != map.end()) {
         return action->second();
@@ -32,7 +32,7 @@ bool actionCallbackBefore(const Mappings &mappings, const int &input, bool on_pr
     return true;
 }
 
-void actionCallbackAfter(const Mappings &mappings, const int &input, bool on_press) {
+void actionCallbackAfter(const functions::Mappings &mappings, const int &input, const bool on_press) {
     const auto &map = on_press ? mappings.input_to_logic_after : mappings.release_to_logic_after;
     if (const auto &action = map.find(input); action != map.end()) {
         action->second();
@@ -42,7 +42,7 @@ void actionCallbackAfter(const Mappings &mappings, const int &input, bool on_pre
 void pressButton(const int button_to_press, const std::function<void()> &callback) {
     INPUT ip = {0};
     ip.type = INPUT_MOUSE;
-    ip.mi.dwFlags = detail::BUTTON_ID_TO_PRESS_EVENT.at(button_to_press);
+    ip.mi.dwFlags = BUTTON_ID_TO_PRESS_EVENT.at(button_to_press);
     SendInput(1, &ip, sizeof(INPUT));
     if (callback) {
         callback();
@@ -52,7 +52,7 @@ void pressButton(const int button_to_press, const std::function<void()> &callbac
 void releaseButton(const int button_to_release, const std::function<void()> &callback) {
     INPUT ip = {0};
     ip.type = INPUT_MOUSE;
-    ip.mi.dwFlags = detail::BUTTON_ID_TO_RELEASE_EVENT.at(button_to_release);
+    ip.mi.dwFlags = BUTTON_ID_TO_RELEASE_EVENT.at(button_to_release);
     SendInput(1, &ip, sizeof(INPUT));
     if (callback) {
         callback();
@@ -80,7 +80,7 @@ void handleState(int &state, const bool is_pressed) {
     }
 }
 
-} // namespace detail
+} // namespace
 
 void moveMouse(const int x, const int y, const double resScalingX, const double resScalingY) {
     SetCursorPos(static_cast<int>(x * resScalingX), static_cast<int>(y * resScalingY));
@@ -95,9 +95,9 @@ void moveMouseRelative(const int x, const int y, const double resScalingX, const
 void click(const int button_to_click, const std::function<void()> &callback) {
     std::array<INPUT, 2> ip = {0};
     ip[0].type = INPUT_MOUSE;
-    ip[0].mi.dwFlags = detail::BUTTON_ID_TO_PRESS_EVENT.at(button_to_click);
+    ip[0].mi.dwFlags = BUTTON_ID_TO_PRESS_EVENT.at(button_to_click);
     ip[1].type = INPUT_MOUSE;
-    ip[1].mi.dwFlags = detail::BUTTON_ID_TO_RELEASE_EVENT.at(button_to_click);
+    ip[1].mi.dwFlags = BUTTON_ID_TO_RELEASE_EVENT.at(button_to_click);
     SendInput(2, ip.data(), sizeof(INPUT));
     if (callback) {
         callback();
@@ -106,26 +106,26 @@ void click(const int button_to_click, const std::function<void()> &callback) {
 
 void handleToMouseAbsoluteMove(const Mappings &mappings, const int &input, const int eventType, const double resScalingX, const double resScalingY) {
     if (mappings.buttonState.at(input) == eventType) {
-        bool on_press = PRESSED_STATES.find(eventType) != PRESSED_STATES.end();
-        if (detail::actionCallbackBefore(mappings, input, on_press)) {
-            auto [x, y] = PRESSED_STATES.find(eventType) != PRESSED_STATES.end() ? mappings.input_to_mouse_move.at(input)() : mappings.release_to_mouse_move.at(input)();
+        const bool on_press = PRESSED_STATES.find(eventType) != PRESSED_STATES.end();
+        if (actionCallbackBefore(mappings, input, on_press)) {
+            const auto [x, y] = PRESSED_STATES.find(eventType) != PRESSED_STATES.end() ? mappings.input_to_mouse_move.at(input)() : mappings.release_to_mouse_move.at(input)();
             moveMouse(x, y, resScalingX, resScalingY);
-            detail::actionCallbackAfter(mappings, input, on_press);
+            actionCallbackAfter(mappings, input, on_press);
         }
     }
 }
 
 void handleToClick(const Mappings &mappings, const int &input, const int eventType, const int button) {
     if (mappings.buttonState.at(input) == eventType) {
-        bool on_press = PRESSED_STATES.find(eventType) != PRESSED_STATES.end();
-        if (detail::actionCallbackBefore(mappings, input, on_press)) {
+        const bool on_press = PRESSED_STATES.find(eventType) != PRESSED_STATES.end();
+        if (actionCallbackBefore(mappings, input, on_press)) {
             int actualButton;
             if (button != -1) {
                 actualButton = button;
             } else {
                 actualButton = PRESSED_STATES.find(eventType) != PRESSED_STATES.end() ? mappings.input_to_mouse_click.at(input)() : mappings.release_to_mouse_click.at(input)();
             }
-            std::thread([&mappings, actualButton, input, on_press] { click(actualButton, [mappings, input, on_press] { detail::actionCallbackAfter(mappings, input, on_press); }); })
+            std::thread([&mappings, actualButton, input, on_press] { click(actualButton, [mappings, input, on_press] { actionCallbackAfter(mappings, input, on_press); }); })
                 .detach();
         }
     }
@@ -133,8 +133,8 @@ void handleToClick(const Mappings &mappings, const int &input, const int eventTy
 
 void handleToButtonToggle(const Mappings &mappings, const int &input, const int eventType, const int button) {
     if (mappings.buttonState.at(input) == eventType) {
-        bool on_press = PRESSED_STATES.find(eventType) != PRESSED_STATES.end();
-        if (detail::actionCallbackBefore(mappings, input, on_press)) {
+        const bool on_press = PRESSED_STATES.find(eventType) != PRESSED_STATES.end();
+        if (actionCallbackBefore(mappings, input, on_press)) {
             int actualButton;
             if (button != -1) {
                 actualButton = button;
@@ -142,10 +142,10 @@ void handleToButtonToggle(const Mappings &mappings, const int &input, const int 
                 actualButton = PRESSED_STATES.find(eventType) != PRESSED_STATES.end() ? mappings.input_to_button_toggle.at(input)() : mappings.release_to_button_toggle.at(input)();
             }
             if (!(GetAsyncKeyState(actualButton) & 0x8000)) {
-                std::thread([&mappings, actualButton, input, on_press] { detail::pressButton(actualButton, [&mappings, input, on_press] { detail::actionCallbackAfter(mappings, input, on_press); }); })
+                std::thread([&mappings, actualButton, input, on_press] { pressButton(actualButton, [&mappings, input, on_press] { actionCallbackAfter(mappings, input, on_press); }); })
                     .detach();
             } else {
-                std::thread([&mappings, actualButton, input, on_press] { detail::releaseButton(actualButton, [&mappings, input, on_press] { detail::actionCallbackAfter(mappings, input, on_press); }); })
+                std::thread([&mappings, actualButton, input, on_press] { releaseButton(actualButton, [&mappings, input, on_press] { actionCallbackAfter(mappings, input, on_press); }); })
                     .detach();
             }
         }
@@ -154,22 +154,22 @@ void handleToButtonToggle(const Mappings &mappings, const int &input, const int 
 
 void handleToKeyTap(const Mappings &mappings, const int &input, const int eventType, const int key) {
     if (mappings.buttonState.at(input) == eventType) {
-        bool on_press = PRESSED_STATES.find(eventType) != PRESSED_STATES.end();
-        if (detail::actionCallbackBefore(mappings, input, on_press)) {
+        const bool on_press = PRESSED_STATES.find(eventType) != PRESSED_STATES.end();
+        if (actionCallbackBefore(mappings, input, on_press)) {
             int actualKey;
             if (key != -1) {
                 actualKey = key;
             } else {
                 actualKey = PRESSED_STATES.find(eventType) != PRESSED_STATES.end() ? mappings.input_to_key_tap.at(input)() : mappings.release_to_key_tap.at(input)();
             }
-            std::thread([&mappings, actualKey, input, on_press] { detail::pressThenRelease(actualKey, [mappings, input, on_press] { detail::actionCallbackAfter(mappings, input, on_press); }); })
+            std::thread([&mappings, actualKey, input, on_press] { pressThenRelease(actualKey, [mappings, input, on_press] { actionCallbackAfter(mappings, input, on_press); }); })
                 .detach();
         }
     }
 }
 
 void handleToKeyHold(const Mappings &mappings, const int &input, const int key) {
-    int input_state = mappings.buttonState.at(input);
+    const int input_state = mappings.buttonState.at(input);
     bool on_press;
     int eventFlag;
     if (input_state == JUST_PRESSED) {
@@ -181,10 +181,10 @@ void handleToKeyHold(const Mappings &mappings, const int &input, const int key) 
     } else {
         return;
     }
-    if (detail::actionCallbackBefore(mappings, input, on_press)) {
-        int actualKey = key != -1 ? key : mappings.input_to_key_hold.at(input)();
-        detail::sendInput(actualKey, eventFlag);
-        detail::actionCallbackAfter(mappings, input, on_press);
+    if (actionCallbackBefore(mappings, input, on_press)) {
+        const int actualKey = key != -1 ? key : mappings.input_to_key_hold.at(input)();
+        sendInput(actualKey, eventFlag);
+        actionCallbackAfter(mappings, input, on_press);
     }
 }
 
@@ -193,7 +193,7 @@ void listenToRunEvent(const std::vector<SDL_Event> &events,
                       bool &running) {
     for (const auto &event : events) {
         if (event.type == SDL_JOYBUTTONDOWN) {
-            int button = buttonMapping.at(event.jbutton.button);
+            const int button = buttonMapping.at(event.jbutton.button);
             if (button == ACTIVATE) {
                 running = true;
                 return;
@@ -214,15 +214,15 @@ void updateNonAnalogState(std::unordered_map<int, int> &buttonState, const std::
         switch (event.type) {
         case SDL_JOYBUTTONDOWN:
         case SDL_JOYBUTTONUP: {
-            int button = buttonMapping.at(event.jbutton.button);
-            detail::handleState(buttonState.at(button), event.type == SDL_JOYBUTTONDOWN);
+            const int button = buttonMapping.at(event.jbutton.button);
+            handleState(buttonState.at(button), event.type == SDL_JOYBUTTONDOWN);
             break;
         }
         case SDL_JOYHATMOTION:
-            detail::handleState(buttonState.at(PAD_LEFT), event.jhat.value == SDL_HAT_LEFT);
-            detail::handleState(buttonState.at(PAD_RIGHT), event.jhat.value == SDL_HAT_RIGHT);
-            detail::handleState(buttonState.at(PAD_DOWN), event.jhat.value == SDL_HAT_DOWN);
-            detail::handleState(buttonState.at(PAD_UP), event.jhat.value == SDL_HAT_UP);
+            handleState(buttonState.at(PAD_LEFT), event.jhat.value == SDL_HAT_LEFT);
+            handleState(buttonState.at(PAD_RIGHT), event.jhat.value == SDL_HAT_RIGHT);
+            handleState(buttonState.at(PAD_DOWN), event.jhat.value == SDL_HAT_DOWN);
+            handleState(buttonState.at(PAD_UP), event.jhat.value == SDL_HAT_UP);
             break;
         default:
             break;
@@ -230,24 +230,24 @@ void updateNonAnalogState(std::unordered_map<int, int> &buttonState, const std::
     }
 }
 
-void updateJoystickAsDigital(std::unordered_map<int, int> &buttonState, SDL_Joystick *joystick, Joystick &meta, ButtonGroups type) {
+void updateJoystickAsDigital(std::unordered_map<int, int> &buttonState, SDL_Joystick *joystick, Joystick &meta, const ButtonGroups type) {
     updateJoystickAsAnalog(joystick, meta, type);
     switch (type) {
     case LEFT_JS:
-        detail::handleState(buttonState.at(LEFT_JS_LEFT), meta.isXActive && meta.x < 0);
-        detail::handleState(buttonState.at(LEFT_JS_RIGHT), meta.isXActive && meta.x > 0);
-        detail::handleState(buttonState.at(LEFT_JS_UP), meta.isYActive && meta.y < 0);
-        detail::handleState(buttonState.at(LEFT_JS_DOWN), meta.isYActive && meta.y > 0);
+        handleState(buttonState.at(LEFT_JS_LEFT), meta.isXActive && meta.x < 0);
+        handleState(buttonState.at(LEFT_JS_RIGHT), meta.isXActive && meta.x > 0);
+        handleState(buttonState.at(LEFT_JS_UP), meta.isYActive && meta.y < 0);
+        handleState(buttonState.at(LEFT_JS_DOWN), meta.isYActive && meta.y > 0);
         break;
     case RIGHT_JS:
-        detail::handleState(buttonState.at(RIGHT_JS_LEFT), meta.isXActive && meta.x < 0);
-        detail::handleState(buttonState.at(RIGHT_JS_RIGHT), meta.isXActive && meta.x > 0);
-        detail::handleState(buttonState.at(RIGHT_JS_UP), meta.isYActive && meta.y < 0);
-        detail::handleState(buttonState.at(RIGHT_JS_DOWN), meta.isYActive && meta.y > 0);
+        handleState(buttonState.at(RIGHT_JS_LEFT), meta.isXActive && meta.x < 0);
+        handleState(buttonState.at(RIGHT_JS_RIGHT), meta.isXActive && meta.x > 0);
+        handleState(buttonState.at(RIGHT_JS_UP), meta.isYActive && meta.y < 0);
+        handleState(buttonState.at(RIGHT_JS_DOWN), meta.isYActive && meta.y > 0);
         break;
     case TRIGGERS:
-        detail::handleState(buttonState.at(L2), meta.isXActive);
-        detail::handleState(buttonState.at(R2), meta.isYActive);
+        handleState(buttonState.at(L2), meta.isXActive);
+        handleState(buttonState.at(R2), meta.isYActive);
         break;
     default:
         throw std::invalid_argument("Invalid joystick");
@@ -274,8 +274,9 @@ void updateJoystickAsAnalog(SDL_Joystick *joystick, Joystick &meta, const Button
     }
 }
 
-bool isBufferFree(std::unordered_map<int, int> &buttonState, const int second_input_delay_mills, const int subsequent_inputs_delay_millis, const int &button, BufferState &bufferState) {
-    auto now = std::chrono::steady_clock::now();
+bool isBufferFree(const std::unordered_map<int, int> &buttonState, const int second_input_delay_mills,
+                  const int subsequent_inputs_delay_millis, const int &button, BufferState &bufferState) {
+    const auto now = std::chrono::steady_clock::now();
     if (now - bufferState.lastExecuted <= std::chrono::milliseconds(subsequent_inputs_delay_millis)) {
         return false;
     } else if (!bufferState.isUnleashed && now - bufferState.lastPressed <= std::chrono::milliseconds(second_input_delay_mills)) {

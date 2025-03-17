@@ -11,8 +11,8 @@ struct Joystick {
     bool isXActive;
     bool isYActive;
 
-    Joystick(int xId = -1, int yId = -1, double deadZone = 0.0, double sensitivity = 0.0, double x = 0.0, double y = 0.0,
-             bool isXActive = false, bool isYActive = false)
+    Joystick(const int xId = -1, const int yId = -1, const double deadZone = 0.0, const double sensitivity = 0.0,
+             const double x = 0.0, const double y = 0.0, const bool isXActive = false, const bool isYActive = false)
         : xId(xId), yId(yId), deadZone(deadZone), sensitivity(sensitivity), x(x), y(y), isXActive(isXActive), isYActive(isYActive) {}
 };
 

@@ -22,7 +22,7 @@ static constexpr std::array<std::array<int, 4>, 4> CARD_ADJACENCY_MATRIX = {
      {PAD_RIGHT, PAD_LEFT, NONE, PAD_DOWN}, // right
      {PAD_LEFT, PAD_UP, PAD_RIGHT, NONE}}}; // reroll
 
-static bool updateAbstractState(const int button, State &state, std::unordered_map<int, int> &buttonState, BufferState &bufferState) {
+static bool updateAbstractState(const int button, State &state, const std::unordered_map<int, int> &buttonState, BufferState &bufferState) {
     if (!functions::isBufferFree(buttonState, DEFAULT_SECOND_INPUT_DELAY_MILLIS, DEFAULT_SUBSEQUENT_INPUT_DELAY_MILLIS, button, bufferState)) {
         return false;
     }
@@ -113,7 +113,7 @@ void run(std::unordered_map<int, int> &buttonState,
     try {
         auto lastUpdateTime = std::chrono::steady_clock::now();
         while (true) {
-            auto loopStartTime = std::chrono::steady_clock::now();
+            const auto loopStartTime = std::chrono::steady_clock::now();
             std::vector<SDL_Event> events;
             SDL_Event eventBuffer;
             while (SDL_PollEvent(&eventBuffer)) {

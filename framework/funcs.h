@@ -127,7 +127,7 @@ void updateJoystickAsAnalog(SDL_Joystick *joystick, Joystick &joystickMeta, cons
 /// @param button to debounce.
 /// @param BufferState a buffer state that can be specific to the button, to a set of buttons or shared across all buttons.
 /// @return true if the buffer is free, false otherwise.
-bool isBufferFree(std::unordered_map<int, int> &buttonState, const int second_input_delay_mills, const int subsequent_inputs_delay_millis, const int &button, BufferState &BufferState);
+bool isBufferFree(const std::unordered_map<int, int> &buttonState, const int second_input_delay_mills, const int subsequent_inputs_delay_millis, const int &button, BufferState &BufferState);
 
 /// @brief gives an index for an 8-axis target, effectively creating virtual, diagonal buttons.
 /// @param buttonState button state.

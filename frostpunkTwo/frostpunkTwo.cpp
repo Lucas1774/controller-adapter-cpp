@@ -32,7 +32,7 @@ constexpr std::array<std::array<int, 3>, 1> SPEED_KEYS = {
 constexpr std::array<std::array<int, 6>, 1> OVERLAY_KEYS = {
     {{{VK_LMENU, '4', '5', '6', '7', '8'}}}};
 
-static void updateAbstractState(const int button, State &state, std::unordered_map<int, int> &buttonState, BufferState &bufferState) {
+static void updateAbstractState(const int button, State &state, const std::unordered_map<int, int> &buttonState, BufferState &bufferState) {
     static const std::map<int, std::function<bool()>> keyToFunction = {
         {L1, [&state]() {
              return functions::computeGridBasedTarget(BUILD_MENU_KEYS.size(), BUILD_MENU_KEYS[0].size(), state.buildMenuRow, state.buildMenuColumn, PAD_RIGHT);
@@ -44,7 +44,7 @@ static void updateAbstractState(const int button, State &state, std::unordered_m
              return functions::computeGridBasedTarget(OVERLAY_KEYS.size(), OVERLAY_KEYS[0].size(), state.overlayRow, state.overlayColumn, PAD_RIGHT);
          }}};
 
-    if (auto it = keyToFunction.find(button); it != keyToFunction.end()) {
+    if (const auto it = keyToFunction.find(button); it != keyToFunction.end()) {
         it->second();
     } else if (functions::isBufferFree(buttonState, DEFAULT_SECOND_INPUT_DELAY_MILLIS, DEFAULT_SUBSEQUENT_INPUT_DELAY_MILLIS, button, bufferState)) {
         functions::computeGridBasedTarget(SHOP_COORDINATES.size(), SHOP_COORDINATES[0].size(), state.shopRow, state.shopColumn, button);
@@ -127,7 +127,7 @@ void run(std::unordered_map<int, int> &buttonState,
     try {
         auto lastUpdateTime = std::chrono::steady_clock::now();
         while (true) {
-            auto loopStartTime = std::chrono::steady_clock::now();
+            const auto loopStartTime = std::chrono::steady_clock::now();
             std::vector<SDL_Event> events;
             SDL_Event event;
             while (SDL_PollEvent(&event)) {

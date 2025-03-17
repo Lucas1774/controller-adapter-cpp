@@ -1,6 +1,8 @@
 #include "configParser.h"
 #include "constants.h"
 
+namespace configParser {
+
 namespace {
 
 Joystick readLeftJoystick(const Json::Value &config) {
@@ -27,14 +29,12 @@ Joystick readTriggerJoystick(const Json::Value &config) {
         config["trigger_sensitivity"].asDouble());
 }
 
-} // anonymous namespace
-
-namespace configParser {
+} // namespace
 
 std::unordered_map<int, int> readButtonMapping(const Json::Value &config) {
     std::unordered_map<int, int> buttonMapping;
     for (const std::string &configKey : config["button_mapping"].getMemberNames()) {
-        int key = config["button_mapping"][configKey].asInt() - 1;
+        const int key = config["button_mapping"][configKey].asInt() - 1;
         buttonMapping[key] = BUTTON_NAME_TO_BUTTON_ID.at(configKey);
     }
     return buttonMapping;

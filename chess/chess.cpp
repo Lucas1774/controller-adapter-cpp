@@ -44,7 +44,7 @@ static constexpr std::pair<int, int> REMATCH = {1431, 536};
 static constexpr std::pair<int, int> RESIGN = {1177, 570};
 static constexpr std::pair<int, int> DRAW = {1163, 511};
 
-static bool updateAbstractState(const int button, State &state, std::unordered_map<int, int> &buttonState, BufferState &bufferState) {
+static bool updateAbstractState(const int button, State &state, const std::unordered_map<int, int> &buttonState, BufferState &bufferState) {
     if (!functions::isBufferFree(buttonState, DEFAULT_SECOND_INPUT_DELAY_MILLIS, DEFAULT_SUBSEQUENT_INPUT_DELAY_MILLIS, button, bufferState)) {
         return false;
     }
@@ -121,13 +121,13 @@ void run(std::unordered_map<int, int> &buttonState,
         {PAD_UP, [&state, &buttonState, &bufferState]() { return updateAbstractState(PAD_UP, state, buttonState, bufferState); }},
         {PAD_DOWN, [&state, &buttonState, &bufferState]() { return updateAbstractState(PAD_DOWN, state, buttonState, bufferState); }}};
     const auto INPUT_TO_LOGIC_AFTER = std::unordered_map<int, std::function<void()>>{
-        {L1, [&state, resScalingX, resScalingY]() { auto [x, y] = BOARD_COORDINATES[state.boardRow][state.boardColumn];
+        {L1, [&state, resScalingX, resScalingY]() { const auto [x, y] = BOARD_COORDINATES[state.boardRow][state.boardColumn];
             functions::moveMouse(x, y, resScalingX, resScalingY); }},
-        {R1, [&state, resScalingX, resScalingY]() { auto [x, y] = BOARD_COORDINATES[state.boardRow][state.boardColumn];
+        {R1, [&state, resScalingX, resScalingY]() { const auto [x, y] = BOARD_COORDINATES[state.boardRow][state.boardColumn];
             functions::moveMouse(x, y, resScalingX, resScalingY); }},
-        {X, [&state, resScalingX, resScalingY]() { state.mode = Mode::DRAW; auto [x, y] = DRAW_YES_NO[0][state.drawColumn];
+        {X, [&state, resScalingX, resScalingY]() { state.mode = Mode::DRAW; const auto [x, y] = DRAW_YES_NO[0][state.drawColumn];
             functions::moveMouse(x, y, resScalingX, resScalingY); }},
-        {Y, [&state, resScalingX, resScalingY]() { state.mode = Mode::RESIGN; auto [x, y] = RESIGN_YES_NO[0][state.resignColumn];
+        {Y, [&state, resScalingX, resScalingY]() { state.mode = Mode::RESIGN; const auto [x, y] = RESIGN_YES_NO[0][state.resignColumn];
             functions::moveMouse(x, y, resScalingX, resScalingY); }},
         {A, [&state]() { if (state.mode != Mode::BOARD) {state.mode = Mode::BOARD; state.drawColumn = 0; state.resignColumn = 0;}
         return true; }}};
@@ -143,7 +143,7 @@ void run(std::unordered_map<int, int> &buttonState,
 
     try {
         while (true) {
-            auto loopStartTime = std::chrono::steady_clock::now();
+            const auto loopStartTime = std::chrono::steady_clock::now();
             std::vector<SDL_Event> events;
             SDL_Event eventBuffer;
             while (SDL_PollEvent(&eventBuffer)) {
