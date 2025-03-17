@@ -20,9 +20,9 @@ class Functions {
                  const std::unordered_map<int, std::function<WORD()>> *release_to_key_tap,
                  const std::unordered_map<int, std::function<WORD()>> *input_to_key_hold,
                  const std::unordered_map<int, std::function<bool()>> *input_to_logic_before,
-                 const std::unordered_map<int, std::function<bool()>> *input_to_logic_after,
+                 const std::unordered_map<int, std::function<void()>> *input_to_logic_after,
                  const std::unordered_map<int, std::function<bool()>> *release_to_logic_before,
-                 const std::unordered_map<int, std::function<bool()>> *release_to_logic_after);
+                 const std::unordered_map<int, std::function<void()>> *release_to_logic_after);
 
     /// @brief Moves cursor to the specified position.
     /// @param x x coordinate.
@@ -158,7 +158,8 @@ class Functions {
         {SDL_BUTTON_RIGHT, MOUSEEVENTF_RIGHTUP},
         {SDL_BUTTON_MIDDLE, MOUSEEVENTF_MIDDLEUP}};
     void sendInput(const int key, const DWORD flags) const;
-    bool actionCallback(const int &input, const bool on_press, const bool before) const;
+    bool actionCallbackBefore(const int &input, bool on_press) const;
+    void actionCallbackAfter(const int &input, bool on_press) const;
     void pressButton(const int button_to_click, const std::function<void()> &callback = nullptr) const;
     void releaseButton(const int button_to_release, const std::function<void()> &callback = nullptr) const;
     void pressThenRelease(const int key_to_tap, const std::function<void()> &callback = nullptr) const;
@@ -174,9 +175,9 @@ class Functions {
     const std::unordered_map<int, std::function<WORD()>> *release_to_key_tap;
     const std::unordered_map<int, std::function<WORD()>> *input_to_key_hold;
     const std::unordered_map<int, std::function<bool()>> *input_to_logic_before;
-    const std::unordered_map<int, std::function<bool()>> *input_to_logic_after;
+    const std::unordered_map<int, std::function<void()>> *input_to_logic_after;
     const std::unordered_map<int, std::function<bool()>> *release_to_logic_before;
-    const std::unordered_map<int, std::function<bool()>> *release_to_logic_after;
+    const std::unordered_map<int, std::function<void()>> *release_to_logic_after;
 };
 
 #include "funcs.tpp"

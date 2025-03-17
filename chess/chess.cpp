@@ -116,15 +116,15 @@ void run(std::unordered_map<int, int> &buttonState,
         {PAD_RIGHT, [&functions, &programState, &bufferState]() { return updateAbstractState(PAD_RIGHT, programState, bufferState, functions); }},
         {PAD_UP, [&functions, &programState, &bufferState]() { return updateAbstractState(PAD_UP, programState, bufferState, functions); }},
         {PAD_DOWN, [&functions, &programState, &bufferState]() { return updateAbstractState(PAD_DOWN, programState, bufferState, functions); }}};
-    const auto INPUT_TO_LOGIC_AFTER = std::unordered_map<int, std::function<bool()>>{
+    const auto INPUT_TO_LOGIC_AFTER = std::unordered_map<int, std::function<void()>>{
         {L1, [&functions, &programState, resScalingX, resScalingY]() { auto [x, y] = BOARD_COORDINATES[programState.boardRow][programState.boardColumn];
-            functions.moveMouse(x, y, resScalingX, resScalingY); return true; }},
+            functions.moveMouse(x, y, resScalingX, resScalingY); }},
         {R1, [&functions, &programState, resScalingX, resScalingY]() { auto [x, y] = BOARD_COORDINATES[programState.boardRow][programState.boardColumn];
-            functions.moveMouse(x, y, resScalingX, resScalingY); return true; }},
+            functions.moveMouse(x, y, resScalingX, resScalingY); }},
         {X, [&functions, &programState, resScalingX, resScalingY]() { programState.mode = Mode::DRAW; auto [x, y] = DRAW_YES_NO[0][programState.drawColumn];
-            functions.moveMouse(x, y, resScalingX, resScalingY); return true; }},
+            functions.moveMouse(x, y, resScalingX, resScalingY); }},
         {Y, [&functions, &programState, resScalingX, resScalingY]() { programState.mode = Mode::RESIGN; auto [x, y] = RESIGN_YES_NO[0][programState.resignColumn];
-            functions.moveMouse(x, y, resScalingX, resScalingY); return true; }},
+            functions.moveMouse(x, y, resScalingX, resScalingY); }},
         {A, [&programState]() { if (programState.mode != Mode::BOARD) {programState.mode = Mode::BOARD; programState.drawColumn = 0; programState.resignColumn = 0;}
         return true; }}};
 

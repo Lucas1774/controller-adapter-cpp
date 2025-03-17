@@ -32,7 +32,8 @@ constexpr std::array<std::array<int, 3>, 1> SPEED_KEYS = {
     {{{'1', '2', '3'}}}};
 constexpr std::array<std::array<int, 6>, 1> OVERLAY_KEYS = {
     {{{VK_LMENU, '4', '5', '6', '7', '8'}}}};
-static bool updateAbstractState(const int button, State &state, BufferState &bufferState, const Functions &functions) {
+
+static void updateAbstractState(const int button, State &state, BufferState &bufferState, const Functions &functions) {
     static int dummyTarget = -1;
     static const char dummyButton = -1;
     static const std::map<int, std::function<bool()>> keyToFunction = {
@@ -41,12 +42,10 @@ static bool updateAbstractState(const int button, State &state, BufferState &buf
         {Y, [&functions, &state]() { return functions.computeGridBasedTarget(OVERLAY_KEYS, dummyTarget, state.overlayRow, state.overlayColumn, dummyButton); }}};
 
     if (auto it = keyToFunction.find(button); it != keyToFunction.end()) {
-        return it->second();
+        it->second();
+    } else if (functions.isBufferFree(DEFAULT_SECOND_INPUT_DELAY_MILLIS, DEFAULT_SUBSEQUENT_INPUT_DELAY_MILLIS, button, bufferState)) {
+        functions.computeGridBasedTarget(SHOP_COORDINATES, state.mouseTarget, state.shopRow, state.speedColumn, button);
     }
-    if (!functions.isBufferFree(DEFAULT_SECOND_INPUT_DELAY_MILLIS, DEFAULT_SUBSEQUENT_INPUT_DELAY_MILLIS, button, bufferState)) {
-        return false;
-    }
-    return functions.computeGridBasedTarget(SHOP_COORDINATES, state.mouseTarget, state.shopRow, state.speedColumn, button);
 }
 
 void run(std::unordered_map<int, int> &buttonState,
@@ -105,15 +104,15 @@ void run(std::unordered_map<int, int> &buttonState,
         {PAD_RIGHT, [&state]() { return state.mouseTarget; }},
         {PAD_UP, [&state]() { return state.mouseTarget; }},
         {PAD_DOWN, [&state]() { return state.mouseTarget; }}};
-    const auto INPUT_TO_LOGIC_AFTER = std::unordered_map<int, std::function<bool()>>{
-        {PAD_LEFT, [&functions, &state, &bufferState]() { return updateAbstractState(PAD_LEFT, state, bufferState, functions); }},
-        {PAD_RIGHT, [&functions, &state, &bufferState]() { return updateAbstractState(PAD_RIGHT, state, bufferState, functions); }},
-        {PAD_UP, [&functions, &state, &bufferState]() { return updateAbstractState(PAD_UP, state, bufferState, functions); }},
-        {PAD_DOWN, [&functions, &state, &bufferState]() { return updateAbstractState(PAD_DOWN, state, bufferState, functions); }},
-        {L1, [&functions, &state, &bufferState]() { return updateAbstractState(L1, state, bufferState, functions); }},
-        {R1, [&functions, &state, &bufferState]() { return updateAbstractState(R1, state, bufferState, functions); }}};
-    const auto RELEASE_TO_LOGIC_AFTER = std::unordered_map<int, std::function<bool()>>{
-        {Y, [&functions, &state, &bufferState]() { return updateAbstractState(Y, state, bufferState, functions); }}};
+    const auto INPUT_TO_LOGIC_AFTER = std::unordered_map<int, std::function<void()>>{
+        {PAD_LEFT, [&functions, &state, &bufferState]() { updateAbstractState(PAD_LEFT, state, bufferState, functions); }},
+        {PAD_RIGHT, [&functions, &state, &bufferState]() { updateAbstractState(PAD_RIGHT, state, bufferState, functions); }},
+        {PAD_UP, [&functions, &state, &bufferState]() { updateAbstractState(PAD_UP, state, bufferState, functions); }},
+        {PAD_DOWN, [&functions, &state, &bufferState]() { updateAbstractState(PAD_DOWN, state, bufferState, functions); }},
+        {L1, [&functions, &state, &bufferState]() { updateAbstractState(L1, state, bufferState, functions); }},
+        {R1, [&functions, &state, &bufferState]() { updateAbstractState(R1, state, bufferState, functions); }}};
+    const auto RELEASE_TO_LOGIC_AFTER = std::unordered_map<int, std::function<void()>>{
+        {Y, [&functions, &state, &bufferState]() { updateAbstractState(Y, state, bufferState, functions); }}};
 
     functions.setMaps(&buttonState, &INPUT_TO_MOUSE_MOVE, nullptr, &INPUT_TO_MOUSE_CLICK, nullptr, nullptr, nullptr, &INPUT_TO_KEY_TAP, nullptr, &INPUT_TO_KEY_HOLD, nullptr, &INPUT_TO_LOGIC_AFTER, nullptr, &RELEASE_TO_LOGIC_AFTER);
 
