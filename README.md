@@ -49,3 +49,21 @@ This game has custom config. See inside its folder.
     L1 -> offer rematch
     R1 -> search new game
     UP, DOWN, LEFT, RIGHT -> move the mouse through the board or between "yes" and "no" depending on mode
+
+## Frostpunk 2
+
+    START -> ESCAPE
+    SELECT -> frostland
+    A -> LEFT CLICK
+    B -> RIGHT CLICK
+    X -> PAUSE
+    Y -> cycle through overlays
+    L1 -> cycle through build menus
+    R1 -> cycle through speed
+    L2 -> rotate camera
+    R2 -> rotate camera
+    L3 -> idea tree
+    R3 -> council
+    LEFT JOYSTICK -> move camera
+    RIGHT JOYSTICK -> move mouse
+    UP, DOWN, LEFT, RIGHT -> move the mouse to key spots in shop

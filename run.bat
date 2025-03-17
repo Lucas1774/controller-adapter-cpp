@@ -1,2 +1,2 @@
-.\mapper.exe chess
+.\mapper.exe frostpunk2
 PAUSE

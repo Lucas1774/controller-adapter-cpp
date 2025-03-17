@@ -2,6 +2,7 @@
 
 #include "chess.h"
 #include "constants.h"
+#include "frostpunkTwo.h"
 #include "swarm.h"
 #include "tft.h"
 #include <fstream>
@@ -59,6 +60,9 @@ int main(int argc, char *argv[]) {
          }},
         {"tft", [&buttonState, hasTriggers, config, screenWidth, screenHeight, &joystick]() {
              tft::run(buttonState, hasTriggers, config, screenWidth, screenHeight, joystick);
+         }},
+        {"frostpunk2", [&buttonState, hasTriggers, config, screenWidth, screenHeight, &joystick]() {
+             frostpunkTwo::run(buttonState, hasTriggers, config, screenWidth, screenHeight, joystick);
          }},
         {"chess", [&buttonState, config, screenWidth, screenHeight]() {
              chess::run(buttonState, config, screenWidth, screenHeight);
