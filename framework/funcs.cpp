@@ -102,6 +102,10 @@ void run(const GameParams &gameParams) {
                 functions::action::runMappings(mappings, resScalingX, resScalingY, turboInputs);
             }
 
+            if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - loopStartTime).count() > MILLIS_PER_FRAME) {
+                std::cerr << "Loop took too long: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - loopStartTime).count() << "ms" << std::endl;
+            }
+
             std::this_thread::sleep_for(std::chrono::microseconds(std::max(
                 10000 - std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - loopStartTime).count(), 0LL)));
         }
