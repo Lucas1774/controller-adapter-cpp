@@ -32,22 +32,22 @@ constexpr std::array<std::array<int, 3>, 1> SPEED_KEYS = {
 constexpr std::array<std::array<int, 6>, 1> OVERLAY_KEYS = {
     {{{VK_LMENU, '4', '5', '6', '7', '8'}}}};
 
-static void updateAbstractState(const int button, State &state, BufferState &bufferState, const Functions &functions) {
+static void updateAbstractState(const int button, State &state, std::unordered_map<int, int> &buttonState, BufferState &bufferState) {
     static const std::map<int, std::function<bool()>> keyToFunction = {
-        {L1, [&functions, &state]() {
-             return functions.computeGridBasedTarget(BUILD_MENU_KEYS.size(), BUILD_MENU_KEYS[0].size(), state.buildMenuRow, state.buildMenuColumn, PAD_RIGHT);
+        {L1, [&state]() {
+             return functions::computeGridBasedTarget(BUILD_MENU_KEYS.size(), BUILD_MENU_KEYS[0].size(), state.buildMenuRow, state.buildMenuColumn, PAD_RIGHT);
          }},
-        {R1, [&functions, &state]() {
-             return functions.computeGridBasedTarget(SPEED_KEYS.size(), SPEED_KEYS[0].size(), state.speedRow, state.speedColumn, PAD_RIGHT);
+        {R1, [&state]() {
+             return functions::computeGridBasedTarget(SPEED_KEYS.size(), SPEED_KEYS[0].size(), state.speedRow, state.speedColumn, PAD_RIGHT);
          }},
-        {Y, [&functions, &state]() {
-             return functions.computeGridBasedTarget(OVERLAY_KEYS.size(), OVERLAY_KEYS[0].size(), state.overlayRow, state.overlayColumn, PAD_RIGHT);
+        {Y, [&state]() {
+             return functions::computeGridBasedTarget(OVERLAY_KEYS.size(), OVERLAY_KEYS[0].size(), state.overlayRow, state.overlayColumn, PAD_RIGHT);
          }}};
 
     if (auto it = keyToFunction.find(button); it != keyToFunction.end()) {
         it->second();
-    } else if (functions.isBufferFree(DEFAULT_SECOND_INPUT_DELAY_MILLIS, DEFAULT_SUBSEQUENT_INPUT_DELAY_MILLIS, button, bufferState)) {
-        functions.computeGridBasedTarget(SHOP_COORDINATES.size(), SHOP_COORDINATES[0].size(), state.shopRow, state.shopColumn, button);
+    } else if (functions::isBufferFree(buttonState, DEFAULT_SECOND_INPUT_DELAY_MILLIS, DEFAULT_SUBSEQUENT_INPUT_DELAY_MILLIS, button, bufferState)) {
+        functions::computeGridBasedTarget(SHOP_COORDINATES.size(), SHOP_COORDINATES[0].size(), state.shopRow, state.shopColumn, button);
     }
 }
 
@@ -62,7 +62,6 @@ void run(std::unordered_map<int, int> &buttonState,
     std::unordered_map<int, int> buttonMapping = configParser::readButtonMapping(config);
     bool running = configParser::readRunAutomatically(config);
 
-    Functions functions;
     const double resScalingX = screenWidth / 1920.0;
     const double resScalingY = screenHeight / 1080.0;
     const auto now = std::chrono::steady_clock::now();
@@ -107,16 +106,23 @@ void run(std::unordered_map<int, int> &buttonState,
         {PAD_UP, [&state]() { return SHOP_COORDINATES[state.shopRow][state.shopColumn]; }},
         {PAD_DOWN, [&state]() { return SHOP_COORDINATES[state.shopRow][state.shopColumn]; }}};
     const auto INPUT_TO_LOGIC_AFTER = std::unordered_map<int, std::function<void()>>{
-        {PAD_LEFT, [&functions, &state, &bufferState]() { updateAbstractState(PAD_LEFT, state, bufferState, functions); }},
-        {PAD_RIGHT, [&functions, &state, &bufferState]() { updateAbstractState(PAD_RIGHT, state, bufferState, functions); }},
-        {PAD_UP, [&functions, &state, &bufferState]() { updateAbstractState(PAD_UP, state, bufferState, functions); }},
-        {PAD_DOWN, [&functions, &state, &bufferState]() { updateAbstractState(PAD_DOWN, state, bufferState, functions); }},
-        {L1, [&functions, &state, &bufferState]() { updateAbstractState(L1, state, bufferState, functions); }},
-        {R1, [&functions, &state, &bufferState]() { updateAbstractState(R1, state, bufferState, functions); }}};
+        {PAD_LEFT, [&state, &buttonState, &bufferState]() { updateAbstractState(PAD_LEFT, state, buttonState, bufferState); }},
+        {PAD_RIGHT, [&state, &buttonState, &bufferState]() { updateAbstractState(PAD_RIGHT, state, buttonState, bufferState); }},
+        {PAD_UP, [&state, &buttonState, &bufferState]() { updateAbstractState(PAD_UP, state, buttonState, bufferState); }},
+        {PAD_DOWN, [&state, &buttonState, &bufferState]() { updateAbstractState(PAD_DOWN, state, buttonState, bufferState); }},
+        {L1, [&state, &buttonState, &bufferState]() { updateAbstractState(L1, state, buttonState, bufferState); }},
+        {R1, [&state, &buttonState, &bufferState]() { updateAbstractState(R1, state, buttonState, bufferState); }}};
     const auto RELEASE_TO_LOGIC_AFTER = std::unordered_map<int, std::function<void()>>{
-        {Y, [&functions, &state, &bufferState]() { updateAbstractState(Y, state, bufferState, functions); }}};
+        {Y, [&state, &buttonState, &bufferState]() { updateAbstractState(Y, state, buttonState, bufferState); }}};
 
-    functions.setMaps(&buttonState, &INPUT_TO_MOUSE_MOVE, nullptr, &INPUT_TO_MOUSE_CLICK, nullptr, nullptr, nullptr, &INPUT_TO_KEY_TAP, nullptr, &INPUT_TO_KEY_HOLD, nullptr, &INPUT_TO_LOGIC_AFTER, nullptr, &RELEASE_TO_LOGIC_AFTER);
+    functions::Mappings mappings = {
+        .buttonState = buttonState,
+        .input_to_mouse_move = INPUT_TO_MOUSE_MOVE,
+        .input_to_mouse_click = INPUT_TO_MOUSE_CLICK,
+        .input_to_key_tap = INPUT_TO_KEY_TAP,
+        .input_to_key_hold = INPUT_TO_KEY_HOLD,
+        .input_to_logic_after = INPUT_TO_LOGIC_AFTER,
+        .release_to_logic_after = RELEASE_TO_LOGIC_AFTER};
 
     try {
         auto lastUpdateTime = std::chrono::steady_clock::now();
@@ -128,18 +134,18 @@ void run(std::unordered_map<int, int> &buttonState,
                 events.push_back(event);
             }
             if (!running) {
-                functions.listenToRunEvent(events, buttonMapping, running);
+                functions::listenToRunEvent(events, buttonMapping, running);
             } else {
                 // state
-                functions.updateNonAnalogState(events, buttonMapping);
+                functions::updateNonAnalogState(buttonState, events, buttonMapping);
                 if (buttonState[ACTIVATE] == JUST_PRESSED) {
                     running = false;
                     continue;
                 }
-                functions.updateJoystickAsDigital(joystick, leftJoystick, LEFT_JS);
-                functions.updateJoystickAsAnalog(joystick, rightJoystick, RIGHT_JS);
+                functions::updateJoystickAsDigital(buttonState, joystick, leftJoystick, LEFT_JS);
+                functions::updateJoystickAsAnalog(joystick, rightJoystick, RIGHT_JS);
                 if (hasTriggers) {
-                    functions.updateJoystickAsDigital(joystick, triggers, TRIGGERS);
+                    functions::updateJoystickAsDigital(buttonState, joystick, triggers, TRIGGERS);
                 }
                 if (buttonState[X] == JUST_PRESSED) {
                     state.speedRow = 0;
@@ -155,22 +161,22 @@ void run(std::unordered_map<int, int> &buttonState,
                 // action
                 for (const auto &[input, _] : INPUT_TO_MOUSE_MOVE) {
                     if (TURBO_INPUTS.find(input) != TURBO_INPUTS.end()) {
-                        functions.handleToMouseAbsoluteMove(input, PRESSED, resScalingX, resScalingY);
+                        functions::handleToMouseAbsoluteMove(mappings, input, PRESSED, resScalingX, resScalingY);
                     }
-                    functions.handleToMouseAbsoluteMove(input, JUST_PRESSED, resScalingX, resScalingY);
+                    functions::handleToMouseAbsoluteMove(mappings, input, JUST_PRESSED, resScalingX, resScalingY);
                 }
                 for (const auto &[input, _] : INPUT_TO_MOUSE_CLICK) {
-                    functions.handleToClick(input, JUST_PRESSED);
+                    functions::handleToClick(mappings, input, JUST_PRESSED);
                 }
                 for (const auto &[input, _] : INPUT_TO_KEY_TAP) {
-                    functions.handleToKeyTap(input, JUST_PRESSED);
+                    functions::handleToKeyTap(mappings, input, JUST_PRESSED);
                 }
                 for (const auto &[input, _] : INPUT_TO_KEY_HOLD) {
-                    functions.handleToKeyHold(input);
+                    functions::handleToKeyHold(mappings, input);
                 }
 
                 if ((rightJoystick.isXActive || rightJoystick.isYActive) && std::chrono::steady_clock::now() - lastUpdateTime > std::chrono::milliseconds(MILLIS_PER_FRAME)) {
-                    functions.moveMouseRelative(
+                    functions::moveMouseRelative(
                         static_cast<int>(round(rightJoystick.x * rightJoystick.sensitivity * 100)),
                         static_cast<int>(round(rightJoystick.y * rightJoystick.sensitivity * 100)),
                         resScalingX, resScalingY);

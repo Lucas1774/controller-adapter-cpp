@@ -44,20 +44,20 @@ static constexpr std::pair<int, int> REMATCH = {1431, 536};
 static constexpr std::pair<int, int> RESIGN = {1177, 570};
 static constexpr std::pair<int, int> DRAW = {1163, 511};
 
-static bool updateAbstractState(const int button, State &state, BufferState &bufferState, const Functions &functions) {
-    if (!functions.isBufferFree(DEFAULT_SECOND_INPUT_DELAY_MILLIS, DEFAULT_SUBSEQUENT_INPUT_DELAY_MILLIS, button, bufferState)) {
+static bool updateAbstractState(const int button, State &state, std::unordered_map<int, int> &buttonState, BufferState &bufferState) {
+    if (!functions::isBufferFree(buttonState, DEFAULT_SECOND_INPUT_DELAY_MILLIS, DEFAULT_SUBSEQUENT_INPUT_DELAY_MILLIS, button, bufferState)) {
         return false;
     }
 
     static const std::map<Mode, std::function<bool()>> modeToFunction = {
-        {Mode::BOARD, [&functions, &state, &button]() {
-             return functions.computeGridBasedTarget(BOARD_COORDINATES.size(), BOARD_COORDINATES[0].size(), state.boardRow, state.boardColumn, button);
+        {Mode::BOARD, [&state, &button]() {
+             return functions::computeGridBasedTarget(BOARD_COORDINATES.size(), BOARD_COORDINATES[0].size(), state.boardRow, state.boardColumn, button);
          }},
-        {Mode::RESIGN, [&functions, &state, &button]() {
-             return functions.computeGridBasedTarget(RESIGN_YES_NO.size(), RESIGN_YES_NO[0].size(), state.resignRow, state.resignColumn, button);
+        {Mode::RESIGN, [&state, &button]() {
+             return functions::computeGridBasedTarget(RESIGN_YES_NO.size(), RESIGN_YES_NO[0].size(), state.resignRow, state.resignColumn, button);
          }},
-        {Mode::DRAW, [&functions, &state, &button]() {
-             return functions.computeGridBasedTarget(DRAW_YES_NO.size(), DRAW_YES_NO[0].size(), state.drawRow, state.drawColumn, button);
+        {Mode::DRAW, [&state, &button]() {
+             return functions::computeGridBasedTarget(DRAW_YES_NO.size(), DRAW_YES_NO[0].size(), state.drawRow, state.drawColumn, button);
          }}};
 
     return modeToFunction.at(state.mode)();
@@ -80,7 +80,6 @@ void run(std::unordered_map<int, int> &buttonState,
     std::unordered_map<int, int> buttonMapping = configParser::readButtonMapping(config);
     bool running = configParser::readRunAutomatically(config);
 
-    Functions functions;
     const double resScalingX = screenWidth / 1920.0;
     const double resScalingY = screenHeight / 1080.0;
     const auto now = std::chrono::steady_clock::now();
@@ -104,7 +103,7 @@ void run(std::unordered_map<int, int> &buttonState,
         {PAD_RIGHT, [&state]() { return getMouseTarget(state); }},
         {PAD_UP, [&state]() { return getMouseTarget(state); }},
         {PAD_DOWN, [&state]() { return getMouseTarget(state); }}};
-    const auto INPUT_TO_BUTTON_CLICK = std::unordered_map<int, std::function<int()>>{
+    const auto INPUT_TO_MOUSE_CLICK = std::unordered_map<int, std::function<int()>>{
         {B, []() { return SDL_BUTTON_RIGHT; }},
         {R1, []() { return SDL_BUTTON_LEFT; }},
         {L1, []() { return SDL_BUTTON_LEFT; }},
@@ -113,27 +112,34 @@ void run(std::unordered_map<int, int> &buttonState,
     const auto INPUT_TO_BUTTON_TOGGLE = std::unordered_map<int, std::function<int()>>{{A, []() { return SDL_BUTTON_LEFT; }}};
     const auto RELEASE_TO_BUTTON_TOGGLE = std::unordered_map<int, std::function<int()>>{{A, []() { return SDL_BUTTON_LEFT; }}};
     const auto INPUT_TO_LOGIC_BEFORE = std::unordered_map<int, std::function<bool()>>{
-        {L1, [&functions, resScalingX, resScalingY]() { functions.moveMouse(REMATCH.first,REMATCH.second, resScalingX, resScalingY); return true; }},
-        {R1, [&functions, resScalingX, resScalingY]() { functions.moveMouse(PLAY_AGAIN.first,PLAY_AGAIN.second, resScalingX, resScalingY); return true; }},
-        {X, [&functions, resScalingX, resScalingY]() { functions.moveMouse(DRAW.first,DRAW.second, resScalingX, resScalingY); return true; }},
-        {Y, [&functions, resScalingX, resScalingY]() { functions.moveMouse(RESIGN.first,RESIGN.second, resScalingX, resScalingY); return true; }},
-        {PAD_LEFT, [&functions, &state, &bufferState]() { return updateAbstractState(PAD_LEFT, state, bufferState, functions); }},
-        {PAD_RIGHT, [&functions, &state, &bufferState]() { return updateAbstractState(PAD_RIGHT, state, bufferState, functions); }},
-        {PAD_UP, [&functions, &state, &bufferState]() { return updateAbstractState(PAD_UP, state, bufferState, functions); }},
-        {PAD_DOWN, [&functions, &state, &bufferState]() { return updateAbstractState(PAD_DOWN, state, bufferState, functions); }}};
+        {L1, [resScalingX, resScalingY]() { functions::moveMouse(REMATCH.first,REMATCH.second, resScalingX, resScalingY); return true; }},
+        {R1, [resScalingX, resScalingY]() { functions::moveMouse(PLAY_AGAIN.first,PLAY_AGAIN.second, resScalingX, resScalingY); return true; }},
+        {X, [resScalingX, resScalingY]() { functions::moveMouse(DRAW.first,DRAW.second, resScalingX, resScalingY); return true; }},
+        {Y, [resScalingX, resScalingY]() { functions::moveMouse(RESIGN.first,RESIGN.second, resScalingX, resScalingY); return true; }},
+        {PAD_LEFT, [&state, &buttonState, &bufferState]() { return updateAbstractState(PAD_LEFT, state, buttonState, bufferState); }},
+        {PAD_RIGHT, [&state, &buttonState, &bufferState]() { return updateAbstractState(PAD_RIGHT, state, buttonState, bufferState); }},
+        {PAD_UP, [&state, &buttonState, &bufferState]() { return updateAbstractState(PAD_UP, state, buttonState, bufferState); }},
+        {PAD_DOWN, [&state, &buttonState, &bufferState]() { return updateAbstractState(PAD_DOWN, state, buttonState, bufferState); }}};
     const auto INPUT_TO_LOGIC_AFTER = std::unordered_map<int, std::function<void()>>{
-        {L1, [&functions, &state, resScalingX, resScalingY]() { auto [x, y] = BOARD_COORDINATES[state.boardRow][state.boardColumn];
-            functions.moveMouse(x, y, resScalingX, resScalingY); }},
-        {R1, [&functions, &state, resScalingX, resScalingY]() { auto [x, y] = BOARD_COORDINATES[state.boardRow][state.boardColumn];
-            functions.moveMouse(x, y, resScalingX, resScalingY); }},
-        {X, [&functions, &state, resScalingX, resScalingY]() { state.mode = Mode::DRAW; auto [x, y] = DRAW_YES_NO[0][state.drawColumn];
-            functions.moveMouse(x, y, resScalingX, resScalingY); }},
-        {Y, [&functions, &state, resScalingX, resScalingY]() { state.mode = Mode::RESIGN; auto [x, y] = RESIGN_YES_NO[0][state.resignColumn];
-            functions.moveMouse(x, y, resScalingX, resScalingY); }},
+        {L1, [&state, resScalingX, resScalingY]() { auto [x, y] = BOARD_COORDINATES[state.boardRow][state.boardColumn];
+            functions::moveMouse(x, y, resScalingX, resScalingY); }},
+        {R1, [&state, resScalingX, resScalingY]() { auto [x, y] = BOARD_COORDINATES[state.boardRow][state.boardColumn];
+            functions::moveMouse(x, y, resScalingX, resScalingY); }},
+        {X, [&state, resScalingX, resScalingY]() { state.mode = Mode::DRAW; auto [x, y] = DRAW_YES_NO[0][state.drawColumn];
+            functions::moveMouse(x, y, resScalingX, resScalingY); }},
+        {Y, [&state, resScalingX, resScalingY]() { state.mode = Mode::RESIGN; auto [x, y] = RESIGN_YES_NO[0][state.resignColumn];
+            functions::moveMouse(x, y, resScalingX, resScalingY); }},
         {A, [&state]() { if (state.mode != Mode::BOARD) {state.mode = Mode::BOARD; state.drawColumn = 0; state.resignColumn = 0;}
         return true; }}};
 
-    functions.setMaps(&buttonState, &INPUT_TO_MOUSE_MOVE, nullptr, &INPUT_TO_BUTTON_CLICK, nullptr, &INPUT_TO_BUTTON_TOGGLE, &RELEASE_TO_BUTTON_TOGGLE, nullptr, nullptr, nullptr, &INPUT_TO_LOGIC_BEFORE, &INPUT_TO_LOGIC_AFTER, nullptr, nullptr);
+    functions::Mappings mappings = {
+        .buttonState = buttonState,
+        .input_to_mouse_move = INPUT_TO_MOUSE_MOVE,
+        .input_to_mouse_click = INPUT_TO_MOUSE_CLICK,
+        .input_to_button_toggle = INPUT_TO_BUTTON_TOGGLE,
+        .release_to_button_toggle = RELEASE_TO_BUTTON_TOGGLE,
+        .input_to_logic_before = INPUT_TO_LOGIC_BEFORE,
+        .input_to_logic_after = INPUT_TO_LOGIC_AFTER};
 
     try {
         while (true) {
@@ -144,10 +150,10 @@ void run(std::unordered_map<int, int> &buttonState,
                 events.push_back(eventBuffer);
             }
             if (!running) {
-                functions.listenToRunEvent(events, buttonMapping, running);
+                functions::listenToRunEvent(events, buttonMapping, running);
             } else {
                 // state
-                functions.updateNonAnalogState(events, buttonMapping);
+                functions::updateNonAnalogState(buttonState, events, buttonMapping);
                 if (buttonState[ACTIVATE] == JUST_PRESSED) {
                     running = false;
                     continue;
@@ -156,18 +162,18 @@ void run(std::unordered_map<int, int> &buttonState,
                 // action
                 for (const auto &[input, _] : INPUT_TO_MOUSE_MOVE) {
                     if (TURBO_INPUTS.find(input) != TURBO_INPUTS.end()) {
-                        functions.handleToMouseAbsoluteMove(input, PRESSED, resScalingX, resScalingY);
+                        functions::handleToMouseAbsoluteMove(mappings, input, PRESSED, resScalingX, resScalingY);
                     }
-                    functions.handleToMouseAbsoluteMove(input, JUST_PRESSED, resScalingX, resScalingY);
+                    functions::handleToMouseAbsoluteMove(mappings, input, JUST_PRESSED, resScalingX, resScalingY);
                 }
-                for (const auto &[input, _] : INPUT_TO_BUTTON_CLICK) {
-                    functions.handleToClick(input, JUST_PRESSED);
+                for (const auto &[input, _] : INPUT_TO_MOUSE_CLICK) {
+                    functions::handleToClick(mappings, input, JUST_PRESSED);
                 }
                 for (const auto &[input, _] : INPUT_TO_BUTTON_TOGGLE) {
-                    functions.handleToButtonToggle(input, JUST_PRESSED);
+                    functions::handleToButtonToggle(mappings, input, JUST_PRESSED);
                 }
                 for (const auto &[input, _] : RELEASE_TO_BUTTON_TOGGLE) {
-                    functions.handleToButtonToggle(input, JUST_RELEASED);
+                    functions::handleToButtonToggle(mappings, input, JUST_RELEASED);
                 }
             }
 

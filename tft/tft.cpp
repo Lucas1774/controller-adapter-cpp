@@ -66,8 +66,8 @@ static constexpr std::array<std::array<int, 3>, 3> LOCK_ADJACENCY_MATRIX = {
      {PAD_UP, NONE, PAD_DOWN},   // 1
      {PAD_DOWN, PAD_UP, NONE}}}; // 2
 
-static bool updateAbstractState(const int button, State &state, BufferState &bufferState, const Functions &functions) {
-    if (!functions.isBufferFree(DEFAULT_SECOND_INPUT_DELAY_MILLIS, DEFAULT_SUBSEQUENT_INPUT_DELAY_MILLIS, button, bufferState)) {
+static bool updateAbstractState(const int button, State &state, std::unordered_map<int, int> &buttonState, BufferState &bufferState) {
+    if (!functions::isBufferFree(buttonState, DEFAULT_SECOND_INPUT_DELAY_MILLIS, DEFAULT_SUBSEQUENT_INPUT_DELAY_MILLIS, button, bufferState)) {
         return false;
     }
 
@@ -106,17 +106,17 @@ static bool updateAbstractState(const int button, State &state, BufferState &buf
     }
 
     static const std::map<MouseMovementWithPadMode, std::function<bool()>> modeToFunction = {
-        {MouseMovementWithPadMode::ITEMS, [&functions, &state, &button]() {
-             return functions.computeGridBasedTarget(ITEM_COORDINATES.size(), ITEM_COORDINATES[0].size(), state.itemRow, state.itemColumn, button);
+        {MouseMovementWithPadMode::ITEMS, [&state, &button]() {
+             return functions::computeGridBasedTarget(ITEM_COORDINATES.size(), ITEM_COORDINATES[0].size(), state.itemRow, state.itemColumn, button);
          }},
-        {MouseMovementWithPadMode::SHOP, [&functions, &state, &button]() {
-             return functions.computeGridBasedTarget(SHOP_COORDINATES.size(), SHOP_COORDINATES[0].size(), state.shopRow, state.shopColumn, button);
+        {MouseMovementWithPadMode::SHOP, [&state, &button]() {
+             return functions::computeGridBasedTarget(SHOP_COORDINATES.size(), SHOP_COORDINATES[0].size(), state.shopRow, state.shopColumn, button);
          }},
-        {MouseMovementWithPadMode::CARDS, [&functions, &state, &button]() {
-             return functions.computeGridBasedTarget(CARD_COORDINATES.size(), CARD_COORDINATES[0].size(), state.cardRow, state.cardColumn, button);
+        {MouseMovementWithPadMode::CARDS, [&state, &button]() {
+             return functions::computeGridBasedTarget(CARD_COORDINATES.size(), CARD_COORDINATES[0].size(), state.cardRow, state.cardColumn, button);
          }},
-        {MouseMovementWithPadMode::LOCK, [&functions, &state, &button]() {
-             return functions.computeAdjacencyMatrixBasedTarget(LOCK_ADJACENCY_MATRIX, state.lockIndex, button);
+        {MouseMovementWithPadMode::LOCK, [&state, &button]() {
+             return functions::computeAdjacencyMatrixBasedTarget(LOCK_ADJACENCY_MATRIX, state.lockIndex, button);
          }}};
 
     return modeToFunction.at(state.mode)();
@@ -145,7 +145,6 @@ void run(std::unordered_map<int, int> &buttonState,
     std::unordered_map<int, int> buttonMapping = configParser::readButtonMapping(config);
     bool running = configParser::readRunAutomatically(config);
 
-    Functions functions;
     const double resScalingX = screenWidth / 1920.0;
     const double resScalingY = screenHeight / 1080.0;
     const auto now = std::chrono::steady_clock::now();
@@ -190,12 +189,18 @@ void run(std::unordered_map<int, int> &buttonState,
         {R1, [&state] { return getMouseTarget(state); }},
         {L1, [&state] { return getMouseTarget(state); }}};
     const auto INPUT_TO_LOGIC_BEFORE = std::unordered_map<int, std::function<bool()>>{
-        {PAD_LEFT, [&functions, &state, &buffer_state]() { return updateAbstractState(PAD_LEFT, state, buffer_state, functions); }},
-        {PAD_RIGHT, [&functions, &state, &buffer_state]() { return updateAbstractState(PAD_RIGHT, state, buffer_state, functions); }},
-        {PAD_UP, [&functions, &state, &buffer_state]() { return updateAbstractState(PAD_UP, state, buffer_state, functions); }},
-        {PAD_DOWN, [&functions, &state, &buffer_state]() { return updateAbstractState(PAD_DOWN, state, buffer_state, functions); }}};
+        {PAD_LEFT, [&state, &buttonState, &buffer_state]() { return updateAbstractState(PAD_LEFT, state, buttonState, buffer_state); }},
+        {PAD_RIGHT, [&state, &buttonState, &buffer_state]() { return updateAbstractState(PAD_RIGHT, state, buttonState, buffer_state); }},
+        {PAD_UP, [&state, &buttonState, &buffer_state]() { return updateAbstractState(PAD_UP, state, buttonState, buffer_state); }},
+        {PAD_DOWN, [&state, &buttonState, &buffer_state]() { return updateAbstractState(PAD_DOWN, state, buttonState, buffer_state); }}};
 
-    functions.setMaps(&buttonState, &INPUT_TO_MOUSE_MOVE, &RELEASE_TO_MOUSE_MOVE, &INPUT_TO_MOUSE_CLICK, nullptr, nullptr, nullptr, &INPUT_TO_KEY_TAP, nullptr, nullptr, &INPUT_TO_LOGIC_BEFORE, nullptr, nullptr, nullptr);
+    functions::Mappings mappings = {
+        .buttonState = buttonState,
+        .input_to_mouse_move = INPUT_TO_MOUSE_MOVE,
+        .release_to_mouse_move = RELEASE_TO_MOUSE_MOVE,
+        .input_to_mouse_click = INPUT_TO_MOUSE_CLICK,
+        .input_to_key_tap = INPUT_TO_KEY_TAP,
+        .input_to_logic_before = INPUT_TO_LOGIC_BEFORE};
 
     try {
         auto lastUpdateTime = std::chrono::steady_clock::now();
@@ -207,18 +212,18 @@ void run(std::unordered_map<int, int> &buttonState,
                 events.push_back(event);
             }
             if (!running) {
-                functions.listenToRunEvent(events, buttonMapping, running);
+                functions::listenToRunEvent(events, buttonMapping, running);
             } else {
                 // state
-                functions.updateNonAnalogState(events, buttonMapping);
+                functions::updateNonAnalogState(buttonState, events, buttonMapping);
                 if (buttonState[ACTIVATE] == JUST_PRESSED) {
                     running = false;
                     continue;
                 }
-                functions.updateJoystickAsDigital(joystick, leftJoystick, LEFT_JS);
-                functions.updateJoystickAsAnalog(joystick, rightJoystick, RIGHT_JS);
+                functions::updateJoystickAsDigital(buttonState, joystick, leftJoystick, LEFT_JS);
+                functions::updateJoystickAsAnalog(joystick, rightJoystick, RIGHT_JS);
                 if (hasTriggers) {
-                    functions.updateJoystickAsDigital(joystick, triggers, TRIGGERS);
+                    functions::updateJoystickAsDigital(buttonState, joystick, triggers, TRIGGERS);
                 }
                 // the code below is kind of horrible. It is what it is
                 // for item and board mode toggling, we remember positions to make it easier to build full items (no index reset)
@@ -266,30 +271,30 @@ void run(std::unordered_map<int, int> &buttonState,
 
                 // action
                 for (const auto &[input, _] : INPUT_TO_KEY_TAP) {
-                    functions.handleToKeyTap(input, JUST_PRESSED);
+                    functions::handleToKeyTap(mappings, input, JUST_PRESSED);
                 }
                 for (const auto &[input, _] : INPUT_TO_MOUSE_MOVE) {
                     if (TURBO_INPUTS.find(input) != TURBO_INPUTS.end()) {
-                        functions.handleToMouseAbsoluteMove(input, PRESSED, resScalingX, resScalingY);
+                        functions::handleToMouseAbsoluteMove(mappings, input, PRESSED, resScalingX, resScalingY);
                     }
-                    functions.handleToMouseAbsoluteMove(input, JUST_PRESSED, resScalingX, resScalingY);
+                    functions::handleToMouseAbsoluteMove(mappings, input, JUST_PRESSED, resScalingX, resScalingY);
                 }
                 for (const auto &[input, _] : RELEASE_TO_MOUSE_MOVE) {
-                    functions.handleToMouseAbsoluteMove(input, JUST_RELEASED, resScalingX, resScalingY);
+                    functions::handleToMouseAbsoluteMove(mappings, input, JUST_RELEASED, resScalingX, resScalingY);
                 }
                 for (const auto &[input, _] : INPUT_TO_MOUSE_CLICK) {
-                    functions.handleToClick(input, JUST_PRESSED);
+                    functions::handleToClick(mappings, input, JUST_PRESSED);
                 }
                 if (state.mode != MouseMovementWithPadMode::ITEMS) {
-                    functions.handleToClick(A, JUST_PRESSED, SDL_BUTTON_LEFT);
+                    functions::handleToClick(mappings, A, JUST_PRESSED, SDL_BUTTON_LEFT);
                 } else {
-                    functions.handleToButtonToggle(A, JUST_PRESSED, SDL_BUTTON_LEFT);
+                    functions::handleToButtonToggle(mappings, A, JUST_PRESSED, SDL_BUTTON_LEFT);
                 }
 
                 if (rightJoystick.isXActive || rightJoystick.isYActive) {
                     if (std::chrono::steady_clock::now() - lastUpdateTime > std::chrono::milliseconds(MILLIS_PER_FRAME)) {
                         state.mode = MouseMovementWithPadMode::FREE;
-                        functions.moveMouseRelative(
+                        functions::moveMouseRelative(
                             static_cast<int>(round(rightJoystick.x * rightJoystick.sensitivity * 100)),
                             static_cast<int>(round(rightJoystick.y * rightJoystick.sensitivity * 100)),
                             resScalingX, resScalingY);
@@ -297,10 +302,10 @@ void run(std::unordered_map<int, int> &buttonState,
                     }
                 } else if (leftJoystick.isXActive || leftJoystick.isYActive) { // leftJoystick isActive breaks the program semantics:
                                                                                // The joystick has been "digitalized", however, the param is at hand and improves performance, so might as well use it
-                    auto [x, y] = MOVE_COORDINATES[functions.generateAxisTargetWithBitMask(LEFT_JS)];
-                    functions.moveMouse(x, y, resScalingX, resScalingY);
+                    auto [x, y] = MOVE_COORDINATES[functions::generateAxisTargetWithBitMask(buttonState, LEFT_JS)];
+                    functions::moveMouse(x, y, resScalingX, resScalingY);
                     if (std::chrono::steady_clock::now() - lastUpdateTime > std::chrono::milliseconds(MILLIS_PER_FRAME)) {
-                        functions.click(SDL_BUTTON_RIGHT);
+                        functions::click(SDL_BUTTON_RIGHT);
                         lastUpdateTime = std::chrono::steady_clock::now();
                     }
                 }

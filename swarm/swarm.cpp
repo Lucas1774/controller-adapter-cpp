@@ -22,11 +22,11 @@ static constexpr std::array<std::array<int, 4>, 4> CARD_ADJACENCY_MATRIX = {
      {PAD_RIGHT, PAD_LEFT, NONE, PAD_DOWN}, // right
      {PAD_LEFT, PAD_UP, PAD_RIGHT, NONE}}}; // reroll
 
-static bool updateAbstractState(const int button, State &state, BufferState &bufferState, const Functions &functions) {
-    if (!functions.isBufferFree(DEFAULT_SECOND_INPUT_DELAY_MILLIS, DEFAULT_SUBSEQUENT_INPUT_DELAY_MILLIS, button, bufferState)) {
+static bool updateAbstractState(const int button, State &state, std::unordered_map<int, int> &buttonState, BufferState &bufferState) {
+    if (!functions::isBufferFree(buttonState, DEFAULT_SECOND_INPUT_DELAY_MILLIS, DEFAULT_SUBSEQUENT_INPUT_DELAY_MILLIS, button, bufferState)) {
         return false;
     }
-    return functions.computeAdjacencyMatrixBasedTarget(CARD_ADJACENCY_MATRIX, state.cardIndex, button);
+    return functions::computeAdjacencyMatrixBasedTarget(CARD_ADJACENCY_MATRIX, state.cardIndex, button);
 }
 
 void run(std::unordered_map<int, int> &buttonState,
@@ -53,7 +53,6 @@ void run(std::unordered_map<int, int> &buttonState,
     const float MAX_RADIUS_HIGH_PRECISION_OFF = specificConfig["default_radius"].asFloat();
     double currentRadius = MAX_RADIUS_HIGH_PRECISION_OFF;
 
-    Functions functions;
     const double resScalingX = screenWidth / 1920.0;
     const double resScalingY = screenHeight / 1080.0;
     const auto now = std::chrono::steady_clock::now();
@@ -89,18 +88,27 @@ void run(std::unordered_map<int, int> &buttonState,
         {R1, [] { return 'R'; }},
         {L1, [] { return 'E'; }}};
     const auto INPUT_TO_LOGIC_BEFORE = std::unordered_map<int, std::function<bool()>>{
-        {R2, [&functions, resScalingX, resScalingY]() { functions.moveMouse(CENTER_X, CENTER_Y, resScalingX, resScalingY); return true; }},
+        {R2, [resScalingX, resScalingY]() { functions::moveMouse(CENTER_X, CENTER_Y, resScalingX, resScalingY); return true; }},
         {R3, [&highPrecisionAlwaysOn]() { highPrecisionAlwaysOn = !highPrecisionAlwaysOn; return true; }},
-        {PAD_LEFT, [&functions, &state, &bufferState]() { return updateAbstractState(PAD_LEFT, state, bufferState, functions); }},
-        {PAD_RIGHT, [&functions, &state, &bufferState]() { return updateAbstractState(PAD_RIGHT, state, bufferState, functions); }},
-        {PAD_UP, [&functions, &state, &bufferState]() { return updateAbstractState(PAD_UP, state, bufferState, functions); }},
-        {PAD_DOWN, [&functions, &state, &bufferState]() { return updateAbstractState(PAD_DOWN, state, bufferState, functions); }}};
+        {PAD_LEFT, [&state, &buttonState, &bufferState]() { return updateAbstractState(PAD_LEFT, state, buttonState, bufferState); }},
+        {PAD_RIGHT, [&state, &buttonState, &bufferState]() { return updateAbstractState(PAD_RIGHT, state, buttonState, bufferState); }},
+        {PAD_UP, [&state, &buttonState, &bufferState]() { return updateAbstractState(PAD_UP, state, buttonState, bufferState); }},
+        {PAD_DOWN, [&state, &buttonState, &bufferState]() { return updateAbstractState(PAD_DOWN, state, buttonState, bufferState); }}};
     const auto INPUT_TO_LOGIC_AFTER = std::unordered_map<int, std::function<void()>>{{A, [&state]() { state.cardIndex = 3; }}};
     const auto RELEASE_TO_LOGIC_AFTER = std::unordered_map<int, std::function<void()>>{
         {R1, [&currentRadius, MAX_RADIUS_HIGH_PRECISION_OFF]() { currentRadius = MAX_RADIUS_HIGH_PRECISION_OFF; }},
         {L1, [&currentRadius, MAX_RADIUS_HIGH_PRECISION_OFF]() { currentRadius = MAX_RADIUS_HIGH_PRECISION_OFF; }}};
 
-    functions.setMaps(&buttonState, &INPUT_TO_MOUSE_MOVE, nullptr, &INPUT_TO_MOUSE_CLICK, nullptr, nullptr, nullptr, &INPUT_TO_KEY_TAP, &RELEASE_TO_KEY_TAP, &INPUT_TO_KEY_HOLD, &INPUT_TO_LOGIC_BEFORE, &INPUT_TO_LOGIC_AFTER, nullptr, &RELEASE_TO_LOGIC_AFTER);
+    functions::Mappings mappings = {
+        .buttonState = buttonState,
+        .input_to_mouse_move = INPUT_TO_MOUSE_MOVE,
+        .input_to_mouse_click = INPUT_TO_MOUSE_CLICK,
+        .input_to_key_tap = INPUT_TO_KEY_TAP,
+        .release_to_key_tap = RELEASE_TO_KEY_TAP,
+        .input_to_key_hold = INPUT_TO_KEY_HOLD,
+        .input_to_logic_before = INPUT_TO_LOGIC_BEFORE,
+        .input_to_logic_after = INPUT_TO_LOGIC_AFTER,
+        .release_to_logic_after = RELEASE_TO_LOGIC_AFTER};
 
     try {
         auto lastUpdateTime = std::chrono::steady_clock::now();
@@ -112,18 +120,18 @@ void run(std::unordered_map<int, int> &buttonState,
                 events.push_back(eventBuffer);
             }
             if (!running) {
-                functions.listenToRunEvent(events, buttonMapping, running);
+                functions::listenToRunEvent(events, buttonMapping, running);
             } else {
                 // state
-                functions.updateNonAnalogState(events, buttonMapping);
+                functions::updateNonAnalogState(buttonState, events, buttonMapping);
                 if (buttonState[ACTIVATE] == JUST_PRESSED) {
                     running = false;
                     continue;
                 }
-                functions.updateJoystickAsDigital(joystick, leftJoystick, LEFT_JS);
-                functions.updateJoystickAsAnalog(joystick, rightJoystick, RIGHT_JS);
+                functions::updateJoystickAsDigital(buttonState, joystick, leftJoystick, LEFT_JS);
+                functions::updateJoystickAsAnalog(joystick, rightJoystick, RIGHT_JS);
                 if (hasTriggers) {
-                    functions.updateJoystickAsDigital(joystick, triggers, TRIGGERS);
+                    functions::updateJoystickAsDigital(buttonState, joystick, triggers, TRIGGERS);
                 }
                 highPrecision = buttonState[L2] == PRESSED || buttonState[L2] == JUST_PRESSED;
                 if (buttonState[R1] == PRESSED || buttonState[L1] == PRESSED) {
@@ -137,35 +145,35 @@ void run(std::unordered_map<int, int> &buttonState,
 
                 // action
                 for (const auto &[input, _] : INPUT_TO_KEY_TAP) {
-                    functions.handleToKeyTap(input, JUST_PRESSED);
+                    functions::handleToKeyTap(mappings, input, JUST_PRESSED);
                 }
                 for (const auto &[input, _] : INPUT_TO_KEY_HOLD) {
-                    functions.handleToKeyHold(input);
+                    functions::handleToKeyHold(mappings, input);
                 }
                 for (const auto &[input, _] : INPUT_TO_MOUSE_MOVE) {
                     if (TURBO_INPUTS.find(input) != TURBO_INPUTS.end()) {
-                        functions.handleToMouseAbsoluteMove(input, PRESSED, resScalingX, resScalingY);
+                        functions::handleToMouseAbsoluteMove(mappings, input, PRESSED, resScalingX, resScalingY);
                     }
-                    functions.handleToMouseAbsoluteMove(input, JUST_PRESSED, resScalingX, resScalingY);
+                    functions::handleToMouseAbsoluteMove(mappings, input, JUST_PRESSED, resScalingX, resScalingY);
                 }
                 for (const auto &[input, _] : RELEASE_TO_KEY_TAP) {
-                    functions.handleToKeyTap(input, JUST_RELEASED);
+                    functions::handleToKeyTap(mappings, input, JUST_RELEASED);
                 }
                 for (const auto &[input, _] : INPUT_TO_MOUSE_CLICK) {
-                    functions.handleToClick(input, JUST_PRESSED);
+                    functions::handleToClick(mappings, input, JUST_PRESSED);
                 }
 
                 if (rightJoystick.isXActive || rightJoystick.isYActive) {
                     if (highPrecisionAlwaysOn || highPrecision) {
                         if (std::chrono::steady_clock::now() - lastUpdateTime > std::chrono::milliseconds(MILLIS_PER_FRAME)) {
-                            functions.moveMouseRelative(
+                            functions::moveMouseRelative(
                                 static_cast<int>(round(rightJoystick.x * rightJoystick.sensitivity * 100)),
                                 static_cast<int>(round(rightJoystick.y * rightJoystick.sensitivity * 100)),
                                 resScalingX, resScalingY);
                             lastUpdateTime = std::chrono::steady_clock::now();
                         }
                     } else {
-                        functions.moveMouse(
+                        functions::moveMouse(
                             static_cast<int>(round(rightJoystick.x * CENTER_X * currentRadius + CENTER_X)),
                             static_cast<int>(round(rightJoystick.y * CENTER_Y * currentRadius + CENTER_Y)),
                             resScalingX, resScalingY);
