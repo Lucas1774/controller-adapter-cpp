@@ -8,12 +8,10 @@ namespace functions {
 namespace {
 
 const std::unordered_map<int, DWORD> BUTTON_ID_TO_PRESS_EVENT = {
-    {0, 0}, // noop hack
     {SDL_BUTTON_LEFT, MOUSEEVENTF_LEFTDOWN},
     {SDL_BUTTON_RIGHT, MOUSEEVENTF_RIGHTDOWN},
     {SDL_BUTTON_MIDDLE, MOUSEEVENTF_MIDDLEDOWN}};
 const std::unordered_map<int, DWORD> BUTTON_ID_TO_RELEASE_EVENT = {
-    {0, 0}, // noop hack
     {SDL_BUTTON_LEFT, MOUSEEVENTF_LEFTUP},
     {SDL_BUTTON_RIGHT, MOUSEEVENTF_RIGHTUP},
     {SDL_BUTTON_MIDDLE, MOUSEEVENTF_MIDDLEUP}};
