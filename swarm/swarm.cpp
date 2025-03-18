@@ -133,7 +133,7 @@ void run(std::unordered_map<int, int> &buttonState,
                 if (hasTriggers) {
                     functions::updateJoystickAsDigital(buttonState, joystick, triggers, TRIGGERS);
                 }
-                highPrecision = buttonState[L2] == PRESSED || buttonState[L2] == JUST_PRESSED;
+                highPrecision = PRESSED_STATES.find(buttonState[L2]) != PRESSED_STATES.end();
                 if (buttonState[R1] == PRESSED || buttonState[L1] == PRESSED) {
                     currentRadius += rightJoystick.sensitivity * 0.05f;
                 }

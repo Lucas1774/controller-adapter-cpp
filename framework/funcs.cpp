@@ -85,46 +85,37 @@ void handleState(int &state, const bool is_pressed) {
 } // namespace
 
 void runMappings(const Mappings &mappings, double resScalingX, double resScalingY, const std::unordered_set<int> &turboInputs) {
-    for (const auto &[input, _] : mappings.input_to_mouse_move) {
-        if (turboInputs.find(input) != turboInputs.end()) {
-            handleToMouseAbsoluteMove(mappings, input, PRESSED, resScalingX, resScalingY);
+
+    static const auto &callHandler = [&mappings, &turboInputs](const auto &mapping, const auto &handler, const int eventType) {
+        for (const auto &[input, _] : mapping) {
+            if (turboInputs.find(input) != turboInputs.end()) {
+                handler(mappings, input, PRESSED, -1);
+            }
+            handler(mappings, input, eventType, -1);
         }
-        handleToMouseAbsoluteMove(mappings, input, JUST_PRESSED, resScalingX, resScalingY);
-    }
-    for (const auto &[input, _] : mappings.release_to_mouse_move) {
-        handleToMouseAbsoluteMove(mappings, input, JUST_RELEASED, resScalingX, resScalingY);
-    }
-    for (const auto &[input, _] : mappings.input_to_mouse_click) {
-        if (turboInputs.find(input) != turboInputs.end()) {
-            handleToClick(mappings, input, PRESSED);
+    };
+
+    static const auto &callHandlerWithResScaling = [&mappings, &turboInputs](const auto &mapping, const auto &handler, const int eventType,
+                                                                             const double resScalingX, const double resScalingY) {
+        for (const auto &[input, _] : mapping) {
+            if (turboInputs.find(input) != turboInputs.end()) {
+                handler(mappings, input, PRESSED, resScalingX, resScalingY);
+            }
+            handler(mappings, input, eventType, resScalingX, resScalingY);
         }
-        handleToClick(mappings, input, JUST_PRESSED);
-    }
-    for (const auto &[input, _] : mappings.release_to_mouse_click) {
-        handleToClick(mappings, input, JUST_RELEASED);
-    }
-    for (const auto &[input, _] : mappings.input_to_button_toggle) {
-        if (turboInputs.find(input) != turboInputs.end()) {
-            handleToButtonToggle(mappings, input, PRESSED);
-        }
-        handleToButtonToggle(mappings, input, JUST_PRESSED);
-    }
-    for (const auto &[input, _] : mappings.release_to_button_toggle) {
-        handleToButtonToggle(mappings, input, JUST_RELEASED);
-    }
-    for (const auto &[input, _] : mappings.input_to_key_tap) {
-        if (turboInputs.find(input) != turboInputs.end()) {
-            handleToKeyTap(mappings, input, PRESSED);
-        }
-        handleToKeyTap(mappings, input, JUST_PRESSED);
-    }
-    for (const auto &[input, _] : mappings.release_to_key_tap) {
-        handleToKeyTap(mappings, input, JUST_RELEASED);
-    }
+    };
+
+    callHandler(mappings.input_to_mouse_click, handleToClick, JUST_PRESSED);
+    callHandler(mappings.release_to_mouse_click, handleToClick, JUST_RELEASED);
+    callHandler(mappings.input_to_button_toggle, handleToButtonToggle, JUST_PRESSED);
+    callHandler(mappings.release_to_button_toggle, handleToButtonToggle, JUST_RELEASED);
+    callHandler(mappings.input_to_key_tap, handleToKeyTap, JUST_PRESSED);
+    callHandler(mappings.release_to_key_tap, handleToKeyTap, JUST_RELEASED);
+    // res scaled
+    callHandlerWithResScaling(mappings.input_to_mouse_move, handleToMouseAbsoluteMove, JUST_PRESSED, resScalingX, resScalingY);
+    callHandlerWithResScaling(mappings.release_to_mouse_move, handleToMouseAbsoluteMove, JUST_RELEASED, resScalingX, resScalingY);
+    // event independent
     for (const auto &[input, _] : mappings.input_to_key_hold) {
-        if (turboInputs.find(input) != turboInputs.end()) {
-            handleToKeyHold(mappings, input);
-        }
         handleToKeyHold(mappings, input);
     }
 }
