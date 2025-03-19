@@ -39,7 +39,7 @@ void run(std::unordered_map<int, int> &buttonState,
     configParser::initializeJoysticks(config, &leftJoystick, &rightJoystick, hasTriggers ? &triggers : nullptr);
     std::unordered_map<int, int> buttonMapping = configParser::readButtonMapping(config);
     bool running = configParser::readRunAutomatically(config);
-    bool highPrecision;
+    bool highPrecision = false;
     std::ifstream configFile("swarm/config.json");
     Json::Value specificConfig;
     if (configFile.is_open()) {
@@ -64,7 +64,7 @@ void run(std::unordered_map<int, int> &buttonState,
         .lastExecuted = now,
         .isUnleashed = false};
 
-    const auto TURBO_INPUTS = std::unordered_set<int>{PAD_LEFT, PAD_RIGHT, PAD_UP, PAD_DOWN};
+    const auto TURBO_INPUTS = std::unordered_set<int>{PAD_LEFT, PAD_RIGHT, PAD_UP, PAD_DOWN, L1, R1};
     const auto INPUT_TO_KEY_TAP = std::unordered_map<int, std::function<WORD()>>{
         {START, [] { return VK_ESCAPE; }},
         {X, [] { return 'C'; }},
@@ -87,14 +87,22 @@ void run(std::unordered_map<int, int> &buttonState,
     const auto RELEASE_TO_KEY_TAP = std::unordered_map<int, std::function<WORD()>>{
         {R1, [] { return 'R'; }},
         {L1, [] { return 'E'; }}};
-    const auto INPUT_TO_LOGIC_BEFORE = std::unordered_map<int, std::function<bool()>>{
-        {R2, [resScalingX, resScalingY]() { functions::moveMouse(CENTER_X, CENTER_Y, resScalingX, resScalingY); return true; }},
-        {R3, [&highPrecisionAlwaysOn]() { highPrecisionAlwaysOn = !highPrecisionAlwaysOn; return true; }},
+    const auto INPUT_TO_CONDITIONING_LOGIC = std::unordered_map<int, std::function<bool()>>{
         {PAD_LEFT, [&state, &buttonState, &bufferState]() { return updateAbstractState(PAD_LEFT, state, buttonState, bufferState); }},
         {PAD_RIGHT, [&state, &buttonState, &bufferState]() { return updateAbstractState(PAD_RIGHT, state, buttonState, bufferState); }},
         {PAD_UP, [&state, &buttonState, &bufferState]() { return updateAbstractState(PAD_UP, state, buttonState, bufferState); }},
         {PAD_DOWN, [&state, &buttonState, &bufferState]() { return updateAbstractState(PAD_DOWN, state, buttonState, bufferState); }}};
-    const auto INPUT_TO_LOGIC_AFTER = std::unordered_map<int, std::function<void()>>{{A, [&state]() { state.cardIndex = 3; }}};
+    const auto INPUT_TO_LOGIC_BEFORE = std::unordered_map<int, std::function<void()>>{
+        {R2, [resScalingX, resScalingY]() { functions::moveMouse(CENTER_X, CENTER_Y, resScalingX, resScalingY); return true; }},
+        {R3, [&highPrecisionAlwaysOn]() { highPrecisionAlwaysOn = !highPrecisionAlwaysOn; return true; }},
+        {L3, [&buttonState, &currentRadius, MAX_RADIUS_HIGH_PRECISION_OFF]() { buttonState[R1] = RELEASED; buttonState[L1] = RELEASED; currentRadius = MAX_RADIUS_HIGH_PRECISION_OFF; }},
+        {L2, [&highPrecision]() { highPrecision = true; }},
+        {R1, [&currentRadius, &rightJoystick]() { currentRadius += rightJoystick.sensitivity * 0.05f; }},
+        {L1, [&currentRadius, &rightJoystick]() { currentRadius += rightJoystick.sensitivity * 0.05f; }}};
+    const auto INPUT_TO_LOGIC_AFTER = std::unordered_map<int, std::function<void()>>{
+        {A, [&state]() { state.cardIndex = 3; }}};
+    const auto RELEASE_TO_LOGIC_BEFORE = std::unordered_map<int, std::function<void()>>{
+        {L2, [&highPrecision]() { highPrecision = false; }}};
     const auto RELEASE_TO_LOGIC_AFTER = std::unordered_map<int, std::function<void()>>{
         {R1, [&currentRadius, MAX_RADIUS_HIGH_PRECISION_OFF]() { currentRadius = MAX_RADIUS_HIGH_PRECISION_OFF; }},
         {L1, [&currentRadius, MAX_RADIUS_HIGH_PRECISION_OFF]() { currentRadius = MAX_RADIUS_HIGH_PRECISION_OFF; }}};
@@ -106,7 +114,9 @@ void run(std::unordered_map<int, int> &buttonState,
         .input_to_key_tap = INPUT_TO_KEY_TAP,
         .release_to_key_tap = RELEASE_TO_KEY_TAP,
         .input_to_key_hold = INPUT_TO_KEY_HOLD,
+        .input_to_conditioning_logic = INPUT_TO_CONDITIONING_LOGIC,
         .input_to_logic_before = INPUT_TO_LOGIC_BEFORE,
+        .release_to_logic_before = RELEASE_TO_LOGIC_BEFORE,
         .input_to_logic_after = INPUT_TO_LOGIC_AFTER,
         .release_to_logic_after = RELEASE_TO_LOGIC_AFTER};
 
@@ -132,15 +142,6 @@ void run(std::unordered_map<int, int> &buttonState,
                 functions::updateJoystickAsAnalog(joystick, rightJoystick, RIGHT_JS);
                 if (hasTriggers) {
                     functions::updateJoystickAsDigital(buttonState, joystick, triggers, TRIGGERS);
-                }
-                highPrecision = PRESSED_STATES.find(buttonState[L2]) != PRESSED_STATES.end();
-                if (buttonState[R1] == PRESSED || buttonState[L1] == PRESSED) {
-                    currentRadius += rightJoystick.sensitivity * 0.05f;
-                }
-                if (buttonState[L3] == JUST_PRESSED) {
-                    buttonState[R1] = RELEASED;
-                    buttonState[L1] = RELEASED;
-                    currentRadius = MAX_RADIUS_HIGH_PRECISION_OFF;
                 }
 
                 // action

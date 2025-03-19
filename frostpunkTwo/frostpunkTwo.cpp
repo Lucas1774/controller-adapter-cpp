@@ -105,6 +105,10 @@ void run(std::unordered_map<int, int> &buttonState,
         {PAD_RIGHT, [&state]() { return SHOP_COORDINATES[state.shopRow][state.shopColumn]; }},
         {PAD_UP, [&state]() { return SHOP_COORDINATES[state.shopRow][state.shopColumn]; }},
         {PAD_DOWN, [&state]() { return SHOP_COORDINATES[state.shopRow][state.shopColumn]; }}};
+    const auto INPUT_TO_LOGIC_BEFORE = std::unordered_map<int, std::function<void()>>{
+        {A, [&state]() { state.overlayRow = 0; state.overlayColumn = 0; state.buildMenuRow = 0; state.buildMenuColumn = 0; }},
+        {B, [&state]() { state.overlayRow = 0; state.overlayColumn = 0; state.buildMenuRow = 0; state.buildMenuColumn = 0; }},
+        {X, [&state]() { state.speedRow = 0; state.speedColumn = 0; }}};
     const auto INPUT_TO_LOGIC_AFTER = std::unordered_map<int, std::function<void()>>{
         {PAD_LEFT, [&state, &buttonState, &bufferState]() { updateAbstractState(PAD_LEFT, state, buttonState, bufferState); }},
         {PAD_RIGHT, [&state, &buttonState, &bufferState]() { updateAbstractState(PAD_RIGHT, state, buttonState, bufferState); }},
@@ -121,6 +125,7 @@ void run(std::unordered_map<int, int> &buttonState,
         .input_to_mouse_click = INPUT_TO_MOUSE_CLICK,
         .input_to_key_tap = INPUT_TO_KEY_TAP,
         .input_to_key_hold = INPUT_TO_KEY_HOLD,
+        .input_to_logic_before = INPUT_TO_LOGIC_BEFORE,
         .input_to_logic_after = INPUT_TO_LOGIC_AFTER,
         .release_to_logic_after = RELEASE_TO_LOGIC_AFTER};
 
@@ -146,16 +151,6 @@ void run(std::unordered_map<int, int> &buttonState,
                 functions::updateJoystickAsAnalog(joystick, rightJoystick, RIGHT_JS);
                 if (hasTriggers) {
                     functions::updateJoystickAsDigital(buttonState, joystick, triggers, TRIGGERS);
-                }
-                if (buttonState[X] == JUST_PRESSED) {
-                    state.speedRow = 0;
-                    state.speedColumn = 0;
-                }
-                if (buttonState[A] == JUST_PRESSED || buttonState[B] == JUST_PRESSED) {
-                    state.overlayRow = 0;
-                    state.overlayColumn = 0;
-                    state.buildMenuRow = 0;
-                    state.buildMenuColumn = 0;
                 }
 
                 // action

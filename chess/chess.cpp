@@ -111,15 +111,16 @@ void run(std::unordered_map<int, int> &buttonState,
         {X, []() { return SDL_BUTTON_LEFT; }}};
     const auto INPUT_TO_BUTTON_TOGGLE = std::unordered_map<int, std::function<int()>>{{A, []() { return SDL_BUTTON_LEFT; }}};
     const auto RELEASE_TO_BUTTON_TOGGLE = std::unordered_map<int, std::function<int()>>{{A, []() { return SDL_BUTTON_LEFT; }}};
-    const auto INPUT_TO_LOGIC_BEFORE = std::unordered_map<int, std::function<bool()>>{
-        {L1, [resScalingX, resScalingY]() { functions::moveMouse(REMATCH.first,REMATCH.second, resScalingX, resScalingY); return true; }},
-        {R1, [resScalingX, resScalingY]() { functions::moveMouse(PLAY_AGAIN.first,PLAY_AGAIN.second, resScalingX, resScalingY); return true; }},
-        {X, [resScalingX, resScalingY]() { functions::moveMouse(DRAW.first,DRAW.second, resScalingX, resScalingY); return true; }},
-        {Y, [resScalingX, resScalingY]() { functions::moveMouse(RESIGN.first,RESIGN.second, resScalingX, resScalingY); return true; }},
+    const auto INPUT_TO_CONDITIONING_LOGIC = std::unordered_map<int, std::function<bool()>>{
         {PAD_LEFT, [&state, &buttonState, &bufferState]() { return updateAbstractState(PAD_LEFT, state, buttonState, bufferState); }},
         {PAD_RIGHT, [&state, &buttonState, &bufferState]() { return updateAbstractState(PAD_RIGHT, state, buttonState, bufferState); }},
         {PAD_UP, [&state, &buttonState, &bufferState]() { return updateAbstractState(PAD_UP, state, buttonState, bufferState); }},
         {PAD_DOWN, [&state, &buttonState, &bufferState]() { return updateAbstractState(PAD_DOWN, state, buttonState, bufferState); }}};
+    const auto INPUT_TO_LOGIC_BEFORE = std::unordered_map<int, std::function<void()>>{
+        {L1, [resScalingX, resScalingY]() { functions::moveMouse(REMATCH.first, REMATCH.second, resScalingX, resScalingY); }},
+        {R1, [resScalingX, resScalingY]() { functions::moveMouse(PLAY_AGAIN.first, PLAY_AGAIN.second, resScalingX, resScalingY); }},
+        {X, [resScalingX, resScalingY]() { functions::moveMouse(DRAW.first, DRAW.second, resScalingX, resScalingY); }},
+        {Y, [resScalingX, resScalingY]() { functions::moveMouse(RESIGN.first, RESIGN.second, resScalingX, resScalingY); }}};
     const auto INPUT_TO_LOGIC_AFTER = std::unordered_map<int, std::function<void()>>{
         {L1, [&state, resScalingX, resScalingY]() { const auto [x, y] = BOARD_COORDINATES[state.boardRow][state.boardColumn];
             functions::moveMouse(x, y, resScalingX, resScalingY); }},
@@ -138,6 +139,7 @@ void run(std::unordered_map<int, int> &buttonState,
         .input_to_mouse_click = INPUT_TO_MOUSE_CLICK,
         .input_to_button_toggle = INPUT_TO_BUTTON_TOGGLE,
         .release_to_button_toggle = RELEASE_TO_BUTTON_TOGGLE,
+        .input_to_conditioning_logic = INPUT_TO_CONDITIONING_LOGIC,
         .input_to_logic_before = INPUT_TO_LOGIC_BEFORE,
         .input_to_logic_after = INPUT_TO_LOGIC_AFTER};
 

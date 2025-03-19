@@ -26,12 +26,12 @@ This game has custom config. See inside its folder.
 
     START -> W
     SELECT -> RIGHT CLICK
-    A -> LEFT CLICK
+    A -> LEFT CLICK (or left mouse button toggle if already down or in shop mode)
     X -> F
     Y -> D
     B -> E
-    L1 (hold) -> items mode
-    R1 (hold) -> shop mode
+    L1 (hold) -> items mode. Can be used to leave lock or card selection modes
+    R1 (hold) -> shop mode can be used to focus on bench
     L2 -> R
     R2 -> Q
     L3 -> toggle lock mode
@@ -54,7 +54,7 @@ This game has custom config. See inside its folder.
 
     START -> ESCAPE
     SELECT -> frostland
-    A -> LEFT CLICK (or left mouse button toggle if already down or in shop mode)
+    A -> LEFT CLICK
     B -> RIGHT CLICK
     X -> PAUSE
     Y -> cycle through overlays

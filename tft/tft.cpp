@@ -188,11 +188,44 @@ void run(std::unordered_map<int, int> &buttonState,
     const auto RELEASE_TO_MOUSE_MOVE = std::unordered_map<int, std::function<std::pair<int, int>()>>{
         {R1, [&state] { return getMouseTarget(state); }},
         {L1, [&state] { return getMouseTarget(state); }}};
-    const auto INPUT_TO_LOGIC_BEFORE = std::unordered_map<int, std::function<bool()>>{
+    const auto INPUT_TO_CONDITIONAL_LOGIC = std::unordered_map<int, std::function<bool()>>{
         {PAD_LEFT, [&state, &buttonState, &buffer_state]() { return updateAbstractState(PAD_LEFT, state, buttonState, buffer_state); }},
         {PAD_RIGHT, [&state, &buttonState, &buffer_state]() { return updateAbstractState(PAD_RIGHT, state, buttonState, buffer_state); }},
         {PAD_UP, [&state, &buttonState, &buffer_state]() { return updateAbstractState(PAD_UP, state, buttonState, buffer_state); }},
         {PAD_DOWN, [&state, &buttonState, &buffer_state]() { return updateAbstractState(PAD_DOWN, state, buttonState, buffer_state); }}};
+    const auto INPUT_TO_LOGIC_BEFORE = std::unordered_map<int, std::function<void()>>{
+        {L1, [&state]() { state.mode = MouseMovementWithPadMode::ITEMS; }},
+        {R1, [&state]() { state.mode = MouseMovementWithPadMode::SHOP; state.shopColumn = 2; }},
+        {R3, [&state]() {
+             if (state.mode == MouseMovementWithPadMode::CARDS) {
+                 state.mode = MouseMovementWithPadMode::BOARD;
+                 state.previous_mode = MouseMovementWithPadMode::BOARD;
+                 state.boardRow = 0;
+                 state.boardColumn = 0;
+             } else {
+                 state.mode = MouseMovementWithPadMode::CARDS;
+                 state.previous_mode = MouseMovementWithPadMode::CARDS;
+                 state.cardRow = 0;
+                 state.cardColumn = 1;
+             }
+         }},
+        {L3, [&state]() {
+             if (state.mode == MouseMovementWithPadMode::LOCK) {
+                 state.mode = MouseMovementWithPadMode::BOARD;
+                 state.boardRow = 0;
+                 state.boardColumn = 0;
+             } else {
+                 state.mode = MouseMovementWithPadMode::LOCK;
+                 state.lockIndex = 0;
+             }
+         }}};
+    const auto RELEASE_TO_LOGIC_BEFORE = std::unordered_map<int, std::function<void()>>{
+        {L1, [&state]() { state.mode = MouseMovementWithPadMode::BOARD; state.previous_mode = MouseMovementWithPadMode::BOARD; }},
+        {R1, [&state]() {
+            state.mode = state.previous_mode; if (state.mode == MouseMovementWithPadMode::BOARD) {
+                state.boardRow = 0;
+                state.boardColumn = 0;
+            } }}};
 
     functions::Mappings mappings = {
         .buttonState = buttonState,
@@ -200,7 +233,9 @@ void run(std::unordered_map<int, int> &buttonState,
         .release_to_mouse_move = RELEASE_TO_MOUSE_MOVE,
         .input_to_mouse_click = INPUT_TO_MOUSE_CLICK,
         .input_to_key_tap = INPUT_TO_KEY_TAP,
-        .input_to_logic_before = INPUT_TO_LOGIC_BEFORE};
+        .input_to_conditioning_logic = INPUT_TO_CONDITIONAL_LOGIC,
+        .input_to_logic_before = INPUT_TO_LOGIC_BEFORE,
+        .release_to_logic_before = RELEASE_TO_LOGIC_BEFORE};
 
     try {
         auto lastUpdateTime = std::chrono::steady_clock::now();
@@ -224,49 +259,6 @@ void run(std::unordered_map<int, int> &buttonState,
                 functions::updateJoystickAsAnalog(joystick, rightJoystick, RIGHT_JS);
                 if (hasTriggers) {
                     functions::updateJoystickAsDigital(buttonState, joystick, triggers, TRIGGERS);
-                }
-                // the code below is kind of horrible. It is what it is
-                // for item and board mode toggling, we remember positions to make it easier to build full items (no index reset)
-                if (buttonState[L1] == JUST_PRESSED) {
-                    state.mode = MouseMovementWithPadMode::ITEMS;
-                } else if (buttonState[L1] == JUST_RELEASED) {
-                    state.mode = MouseMovementWithPadMode::BOARD;
-                    // for shop and board mode toggling, we always go to bench and to middle card (also the "show own board" button location), respectively
-                    // we don't necessarily go back to board mode. If card mode was set as "previous", we go there
-                    // the idea is to easily show the board when going to pick a card, without leaving card selecting mode
-                } else if (buttonState[R1] == JUST_PRESSED) {
-                    state.mode = MouseMovementWithPadMode::SHOP;
-                    state.shopColumn = 2;
-                } else if (buttonState[R1] == JUST_RELEASED) {
-                    state.mode = state.previous_mode;
-                    if (state.mode == MouseMovementWithPadMode::BOARD) {
-                        state.boardRow = 0;
-                        state.boardColumn = 0;
-                    }
-                    // for card and board mode toggling, we also go to the bench when going to board mode, and to the middle when going to card mode, because why not
-                    // we save the state in previous state in case we want to go to item state after
-                } else if (buttonState[R3] == JUST_PRESSED) {
-                    if (state.mode == MouseMovementWithPadMode::CARDS) {
-                        state.mode = MouseMovementWithPadMode::BOARD;
-                        state.previous_mode = MouseMovementWithPadMode::BOARD;
-                        state.boardRow = 0;
-                        state.boardColumn = 0;
-                    } else {
-                        state.mode = MouseMovementWithPadMode::CARDS;
-                        state.previous_mode = MouseMovementWithPadMode::CARDS;
-                        state.cardRow = 0;
-                        state.cardColumn = 1;
-                    }
-                    // for lock and board mode toggling, we also go to bench for convenience, and also always to lock
-                } else if (buttonState[L3] == JUST_PRESSED) {
-                    if (state.mode == MouseMovementWithPadMode::LOCK) {
-                        state.mode = MouseMovementWithPadMode::BOARD;
-                        state.boardRow = 0;
-                        state.boardColumn = 0;
-                    } else {
-                        state.mode = MouseMovementWithPadMode::LOCK;
-                        state.lockIndex = 0;
-                    }
                 }
 
                 // action

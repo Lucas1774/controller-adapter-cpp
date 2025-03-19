@@ -20,9 +20,10 @@ struct Mappings {
     const std::unordered_map<int, std::function<WORD()>> &input_to_key_tap = {};
     const std::unordered_map<int, std::function<WORD()>> &release_to_key_tap = {};
     const std::unordered_map<int, std::function<WORD()>> &input_to_key_hold = {};
-    const std::unordered_map<int, std::function<bool()>> &input_to_logic_before = {};
+    const std::unordered_map<int, std::function<bool()>> &input_to_conditioning_logic = {};
+    const std::unordered_map<int, std::function<void()>> &input_to_logic_before = {};
+    const std::unordered_map<int, std::function<void()>> &release_to_logic_before = {};
     const std::unordered_map<int, std::function<void()>> &input_to_logic_after = {};
-    const std::unordered_map<int, std::function<bool()>> &release_to_logic_before = {};
     const std::unordered_map<int, std::function<void()>> &release_to_logic_after = {};
 };
 
@@ -49,11 +50,10 @@ void moveMouseRelative(const int x, const int y, const double resScalingX, const
 
 /// @brief sends a simple click.
 /// @param button mouse button to click.
-/// @param callback to be executed AFTER the click.
-void click(const int button, const std::function<void()> &callback = nullptr);
+void click(const int button);
 
 /// @brief moves the cursor to the specified position in input_to_mouse_move or release_to_mouse_move map if the input state matches eventType.
-/// Can execute callbacks if defined in the corresponding logic before/after maps. Before callback is boolean and can stop the action.
+/// Can execute a callback if defined in the corresponding logic before map. This callback is boolean and can stop the action.
 /// @param mappings mappings.
 /// @param input controller button linked to the click and key in the map.
 /// @param eventType to match for the mouse to move to the mapped location. Can be any.
@@ -62,7 +62,7 @@ void click(const int button, const std::function<void()> &callback = nullptr);
 void handleToMouseAbsoluteMove(const Mappings &mappings, const int &input, const int eventType, const double resScalingX, const double resScalingY);
 
 /// @brief  clicks the button if the input state matches eventType.
-/// Can execute callbacks if defined in the corresponding logic before/after maps. Before callback is boolean and can stop the action.
+/// Can execute a callback if defined in the corresponding logic before map. This callback is boolean and can stop the action.
 /// @param mappings mappings.
 /// @param input controller button linked to the click.
 /// @param eventType to match for the mouse button to be clicked. Can be any.
@@ -70,7 +70,7 @@ void handleToMouseAbsoluteMove(const Mappings &mappings, const int &input, const
 void handleToClick(const Mappings &mappings, const int &input, const int eventType, const int button = -1);
 
 /// @brief toggles the button if the input state matches eventType.
-/// Can execute callbacks if defined in the corresponding logic before/after maps. Before callback is boolean and can stop the action.
+/// Can execute a callback if defined in the corresponding logic before map. This callback is boolean and can stop the action.
 /// @param mappings mappings.
 /// @param input controller button linked to the mouse button toggle.
 /// @param eventType to match for the mouse button to be toggled. Can be any.
@@ -78,7 +78,7 @@ void handleToClick(const Mappings &mappings, const int &input, const int eventTy
 void handleToButtonToggle(const Mappings &mappings, const int &input, const int eventType, const int button = -1);
 
 /// @brief taps the key if the input state matches eventType.
-/// Can execute callbacks if defined in the corresponding logic before/after maps. Before callback is boolean and can stop the action.
+/// Can execute a callback if defined in the corresponding logic before map. This callback is boolean and can stop the action.
 /// @param mappings mappings.
 /// @param input controller button linked to the key tap.
 /// @param eventType to match for the key to be tapped. Can be any.
@@ -86,7 +86,7 @@ void handleToButtonToggle(const Mappings &mappings, const int &input, const int 
 void handleToKeyTap(const Mappings &mappings, const int &input, const int eventType, const int key = -1);
 
 /// @brief holds the key while the input stays pressed.
-/// Can execute callbacks if defined in the corresponding logic before/after maps. Before callback is boolean and can stop the action.
+/// Can execute a callback if defined in the corresponding logic before map. This callback is boolean and can stop the action.
 /// @param mappings mappings.
 /// @param input controller button linked to the key hold.
 /// @param key key to hold. If none is provided it will be obtained from the corresponding maps.
