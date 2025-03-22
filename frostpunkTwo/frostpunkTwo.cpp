@@ -1,14 +1,10 @@
-#include "frostpunkTwo.h"
-#include "configParser.h"
 #include "funcs.h"
-#include "joystick.h"
-#include <cmath>
-#include <iostream>
-#include <thread>
-#include <unordered_map>
+#include "gameRegistry.h"
 #include <windows.h>
 
-namespace frostpunkTwo {
+using enum Buttons;
+using enum ButtonState;
+using enum ButtonGroups;
 
 struct State {
     int speedRow;
@@ -32,40 +28,30 @@ constexpr std::array<std::array<int, 3>, 1> SPEED_KEYS = {
 constexpr std::array<std::array<int, 6>, 1> OVERLAY_KEYS = {
     {{{VK_LMENU, '4', '5', '6', '7', '8'}}}};
 
-static void updateAbstractState(const int button, State &state, const std::unordered_map<int, int> &buttonState, BufferState &bufferState) {
-    static const std::map<int, std::function<bool()>> keyToFunction = {
+static void updateAbstractState(const Buttons button, State &state, const std::unordered_map<Buttons, ButtonState> &buttonState, BufferState &bufferState) {
+    static const std::map<Buttons, std::function<bool()>> keyToFunction = {
         {L1, [&state]() {
-             return functions::computeGridBasedTarget(BUILD_MENU_KEYS.size(), BUILD_MENU_KEYS[0].size(), state.buildMenuRow, state.buildMenuColumn, PAD_RIGHT);
+             return functions::abstractStateUtils::computeGridBasedTarget(BUILD_MENU_KEYS.size(), BUILD_MENU_KEYS[0].size(), state.buildMenuRow, state.buildMenuColumn, PAD_RIGHT);
          }},
         {R1, [&state]() {
-             return functions::computeGridBasedTarget(SPEED_KEYS.size(), SPEED_KEYS[0].size(), state.speedRow, state.speedColumn, PAD_RIGHT);
+             return functions::abstractStateUtils::computeGridBasedTarget(SPEED_KEYS.size(), SPEED_KEYS[0].size(), state.speedRow, state.speedColumn, PAD_RIGHT);
          }},
         {Y, [&state]() {
-             return functions::computeGridBasedTarget(OVERLAY_KEYS.size(), OVERLAY_KEYS[0].size(), state.overlayRow, state.overlayColumn, PAD_RIGHT);
+             return functions::abstractStateUtils::computeGridBasedTarget(OVERLAY_KEYS.size(), OVERLAY_KEYS[0].size(), state.overlayRow, state.overlayColumn, PAD_RIGHT);
          }}};
 
     if (const auto it = keyToFunction.find(button); it != keyToFunction.end()) {
         it->second();
-    } else if (functions::isBufferFree(buttonState, DEFAULT_SECOND_INPUT_DELAY_MILLIS, DEFAULT_SUBSEQUENT_INPUT_DELAY_MILLIS, button, bufferState)) {
-        functions::computeGridBasedTarget(SHOP_COORDINATES.size(), SHOP_COORDINATES[0].size(), state.shopRow, state.shopColumn, button);
+    } else if (functions::abstractStateUtils::isBufferFree(buttonState, DEFAULT_SECOND_INPUT_DELAY_MILLIS, DEFAULT_SUBSEQUENT_INPUT_DELAY_MILLIS, button, bufferState)) {
+        functions::abstractStateUtils::computeGridBasedTarget(SHOP_COORDINATES.size(), SHOP_COORDINATES[0].size(), state.shopRow, state.shopColumn, button);
     }
 }
 
-void run(std::unordered_map<int, int> &buttonState,
-         const bool &hasTriggers,
-         const Json::Value &config,
-         const int screenWidth,
-         const int screenHeight,
-         SDL_Joystick *joystick) {
-    Joystick leftJoystick, rightJoystick, triggers;
-    configParser::initializeJoysticks(config, &leftJoystick, &rightJoystick, hasTriggers ? &triggers : nullptr);
-    std::unordered_map<int, int> buttonMapping = configParser::readButtonMapping(config);
-    bool running = configParser::readRunAutomatically(config);
+namespace gameRegistry {
 
-    const double resScalingX = screenWidth / 1920.0;
-    const double resScalingY = screenHeight / 1080.0;
+void runFrostpunkTwo(const GameParams &params) {
+    auto [buttonMapping, buttonState, running, resScalingX, resScalingY, joystick, leftJoystick, rightJoystick, triggers] = params;
     const auto now = std::chrono::steady_clock::now();
-
     State state = {
         .speedRow = 0,
         .speedColumn = 0,
@@ -80,8 +66,8 @@ void run(std::unordered_map<int, int> &buttonState,
         .lastExecuted = now,
         .isUnleashed = false};
 
-    const auto TURBO_INPUTS = std::unordered_set<int>{PAD_LEFT, PAD_RIGHT, PAD_UP, PAD_DOWN};
-    const auto INPUT_TO_KEY_TAP = std::unordered_map<int, std::function<WORD()>>{
+    const auto TURBO_INPUTS = std::unordered_set<Buttons>{PAD_LEFT, PAD_RIGHT, PAD_UP, PAD_DOWN};
+    const auto INPUT_TO_KEY_TAP = std::unordered_map<Buttons, std::function<int()>>{
         {R1, [&state]() { return SPEED_KEYS[state.speedRow][state.speedColumn]; }},
         {L1, [&state]() { return BUILD_MENU_KEYS[state.buildMenuRow][state.buildMenuColumn]; }},
         {R3, []() { return 'C'; }},
@@ -89,7 +75,7 @@ void run(std::unordered_map<int, int> &buttonState,
         {SELECT, []() { return 'V'; }},
         {START, []() { return VK_ESCAPE; }},
         {X, []() { return VK_SPACE; }}};
-    const auto INPUT_TO_KEY_HOLD = std::unordered_map<int, std::function<WORD()>>{
+    const auto INPUT_TO_KEY_HOLD = std::unordered_map<Buttons, std::function<int()>>{
         {LEFT_JS_LEFT, []() { return 'A'; }},
         {LEFT_JS_RIGHT, []() { return 'D'; }},
         {LEFT_JS_UP, []() { return 'W'; }},
@@ -97,26 +83,28 @@ void run(std::unordered_map<int, int> &buttonState,
         {R2, []() { return 'E'; }},
         {L2, []() { return 'Q'; }},
         {Y, [&state]() { return OVERLAY_KEYS[state.overlayRow][state.overlayColumn]; }}};
-    const auto INPUT_TO_MOUSE_CLICK = std::unordered_map<int, std::function<int()>>{
+    const auto JOYSTICK_TO_MOUSE_RELATIVE = std::unordered_map<ButtonGroups, std::function<Joystick &()>>{
+        {RIGHT_JS, [&rightJoystick]() -> Joystick & { return rightJoystick; }}};
+    const auto INPUT_TO_MOUSE_CLICK = std::unordered_map<Buttons, std::function<int()>>{
         {A, []() { return SDL_BUTTON_LEFT; }},
         {B, []() { return SDL_BUTTON_RIGHT; }}};
-    const auto INPUT_TO_MOUSE_MOVE = std::unordered_map<int, std::function<std::pair<int, int>()>>{
+    const auto INPUT_TO_MOUSE_MOVE = std::unordered_map<Buttons, std::function<std::pair<int, int>()>>{
         {PAD_LEFT, [&state]() { return SHOP_COORDINATES[state.shopRow][state.shopColumn]; }},
         {PAD_RIGHT, [&state]() { return SHOP_COORDINATES[state.shopRow][state.shopColumn]; }},
         {PAD_UP, [&state]() { return SHOP_COORDINATES[state.shopRow][state.shopColumn]; }},
         {PAD_DOWN, [&state]() { return SHOP_COORDINATES[state.shopRow][state.shopColumn]; }}};
-    const auto INPUT_TO_LOGIC_BEFORE = std::unordered_map<int, std::function<void()>>{
+    const auto INPUT_TO_LOGIC_BEFORE = std::unordered_map<Buttons, std::function<void()>>{
         {A, [&state]() { state.overlayRow = 0; state.overlayColumn = 0; state.buildMenuRow = 0; state.buildMenuColumn = 0; }},
         {B, [&state]() { state.overlayRow = 0; state.overlayColumn = 0; state.buildMenuRow = 0; state.buildMenuColumn = 0; }},
         {X, [&state]() { state.speedRow = 0; state.speedColumn = 0; }}};
-    const auto INPUT_TO_LOGIC_AFTER = std::unordered_map<int, std::function<void()>>{
+    const auto INPUT_TO_LOGIC_AFTER = std::unordered_map<Buttons, std::function<void()>>{
         {PAD_LEFT, [&state, &buttonState, &bufferState]() { updateAbstractState(PAD_LEFT, state, buttonState, bufferState); }},
         {PAD_RIGHT, [&state, &buttonState, &bufferState]() { updateAbstractState(PAD_RIGHT, state, buttonState, bufferState); }},
         {PAD_UP, [&state, &buttonState, &bufferState]() { updateAbstractState(PAD_UP, state, buttonState, bufferState); }},
         {PAD_DOWN, [&state, &buttonState, &bufferState]() { updateAbstractState(PAD_DOWN, state, buttonState, bufferState); }},
         {L1, [&state, &buttonState, &bufferState]() { updateAbstractState(L1, state, buttonState, bufferState); }},
         {R1, [&state, &buttonState, &bufferState]() { updateAbstractState(R1, state, buttonState, bufferState); }}};
-    const auto RELEASE_TO_LOGIC_AFTER = std::unordered_map<int, std::function<void()>>{
+    const auto RELEASE_TO_LOGIC_AFTER = std::unordered_map<Buttons, std::function<void()>>{
         {Y, [&state, &buttonState, &bufferState]() { updateAbstractState(Y, state, buttonState, bufferState); }}};
 
     functions::Mappings mappings = {
@@ -125,52 +113,25 @@ void run(std::unordered_map<int, int> &buttonState,
         .input_to_mouse_click = INPUT_TO_MOUSE_CLICK,
         .input_to_key_tap = INPUT_TO_KEY_TAP,
         .input_to_key_hold = INPUT_TO_KEY_HOLD,
+        .joystick_to_mouse_relative = JOYSTICK_TO_MOUSE_RELATIVE,
         .input_to_logic_before = INPUT_TO_LOGIC_BEFORE,
         .input_to_logic_after = INPUT_TO_LOGIC_AFTER,
         .release_to_logic_after = RELEASE_TO_LOGIC_AFTER};
 
-    try {
-        auto lastUpdateTime = std::chrono::steady_clock::now();
-        while (true) {
-            const auto loopStartTime = std::chrono::steady_clock::now();
-            std::vector<SDL_Event> events;
-            SDL_Event event;
-            while (SDL_PollEvent(&event)) {
-                events.push_back(event);
-            }
-            if (!running) {
-                functions::listenToRunEvent(events, buttonMapping, running);
-            } else {
-                // state
-                functions::updateNonAnalogState(buttonState, events, buttonMapping);
-                if (buttonState[ACTIVATE] == JUST_PRESSED) {
-                    running = false;
-                    continue;
-                }
-                functions::updateJoystickAsDigital(buttonState, joystick, leftJoystick, LEFT_JS);
-                functions::updateJoystickAsAnalog(joystick, rightJoystick, RIGHT_JS);
-                if (hasTriggers) {
-                    functions::updateJoystickAsDigital(buttonState, joystick, triggers, TRIGGERS);
-                }
+    functions::GameParams gameParams = {
+        .buttonMapping = buttonMapping,
+        .buttonState = buttonState,
+        .joystick = joystick,
+        .leftJoystick = leftJoystick,
+        .rightJoystick = rightJoystick,
+        .triggers = triggers,
+        .mappings = mappings,
+        .resScalingX = resScalingX,
+        .resScalingY = resScalingY,
+        .running = running,
+        .turboInputs = TURBO_INPUTS};
 
-                // action
-                functions::runMappings(mappings, resScalingX, resScalingY, TURBO_INPUTS);
-
-                if ((rightJoystick.isXActive || rightJoystick.isYActive) && std::chrono::steady_clock::now() - lastUpdateTime > std::chrono::milliseconds(MILLIS_PER_FRAME)) {
-                    functions::moveMouseRelative(
-                        static_cast<int>(round(rightJoystick.x * rightJoystick.sensitivity * 100)),
-                        static_cast<int>(round(rightJoystick.y * rightJoystick.sensitivity * 100)),
-                        resScalingX, resScalingY);
-                    lastUpdateTime = std::chrono::steady_clock::now();
-                }
-            }
-
-            std::this_thread::sleep_for(std::chrono::microseconds(std::max(
-                10000 - std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - loopStartTime).count(), 0LL)));
-        }
-    } catch (const std::exception &e) {
-        std::cerr << "Exception: " << e.what() << std::endl;
-    }
+    functions::run(gameParams);
 }
 
-} // namespace frostpunkTwo
+} // namespace gameRegistry

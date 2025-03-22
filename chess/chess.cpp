@@ -1,14 +1,8 @@
-#include "chess.h"
-#include "configParser.h"
 #include "funcs.h"
-#include <cmath>
-#include <fstream>
-#include <iostream>
-#include <thread>
-#include <vector>
-#include <windows.h>
+#include "gameRegistry.h"
 
-namespace chess {
+using enum Buttons;
+using enum ButtonState;
 
 enum class Mode {
     BOARD,
@@ -44,20 +38,20 @@ static constexpr std::pair<int, int> REMATCH = {1431, 536};
 static constexpr std::pair<int, int> RESIGN = {1177, 570};
 static constexpr std::pair<int, int> DRAW = {1163, 511};
 
-static bool updateAbstractState(const int button, State &state, const std::unordered_map<int, int> &buttonState, BufferState &bufferState) {
-    if (!functions::isBufferFree(buttonState, DEFAULT_SECOND_INPUT_DELAY_MILLIS, DEFAULT_SUBSEQUENT_INPUT_DELAY_MILLIS, button, bufferState)) {
+static bool updateAbstractState(const Buttons button, State &state, const std::unordered_map<Buttons, ButtonState> &buttonState, BufferState &bufferState) {
+    if (!functions::abstractStateUtils::isBufferFree(buttonState, DEFAULT_SECOND_INPUT_DELAY_MILLIS, DEFAULT_SUBSEQUENT_INPUT_DELAY_MILLIS, button, bufferState)) {
         return false;
     }
 
     static const std::map<Mode, std::function<bool()>> modeToFunction = {
         {Mode::BOARD, [&state, &button]() {
-             return functions::computeGridBasedTarget(BOARD_COORDINATES.size(), BOARD_COORDINATES[0].size(), state.boardRow, state.boardColumn, button);
+             return functions::abstractStateUtils::computeGridBasedTarget(BOARD_COORDINATES.size(), BOARD_COORDINATES[0].size(), state.boardRow, state.boardColumn, button);
          }},
         {Mode::RESIGN, [&state, &button]() {
-             return functions::computeGridBasedTarget(RESIGN_YES_NO.size(), RESIGN_YES_NO[0].size(), state.resignRow, state.resignColumn, button);
+             return functions::abstractStateUtils::computeGridBasedTarget(RESIGN_YES_NO.size(), RESIGN_YES_NO[0].size(), state.resignRow, state.resignColumn, button);
          }},
         {Mode::DRAW, [&state, &button]() {
-             return functions::computeGridBasedTarget(DRAW_YES_NO.size(), DRAW_YES_NO[0].size(), state.drawRow, state.drawColumn, button);
+             return functions::abstractStateUtils::computeGridBasedTarget(DRAW_YES_NO.size(), DRAW_YES_NO[0].size(), state.drawRow, state.drawColumn, button);
          }}};
 
     return modeToFunction.at(state.mode)();
@@ -73,17 +67,11 @@ static std::pair<int, int> getMouseTarget(const State &state) {
     return modeToStateDependingCoordinates.at(state.mode)();
 }
 
-void run(std::unordered_map<int, int> &buttonState,
-         const Json::Value &config,
-         const int screenWidth,
-         const int screenHeight) {
-    std::unordered_map<int, int> buttonMapping = configParser::readButtonMapping(config);
-    bool running = configParser::readRunAutomatically(config);
+namespace gameRegistry {
 
-    const double resScalingX = screenWidth / 1920.0;
-    const double resScalingY = screenHeight / 1080.0;
+void runChess(const GameParams &params) {
+    auto [buttonMapping, buttonState, running, resScalingX, resScalingY, joystick, leftJoystick, rightJoystick, triggers] = params;
     const auto now = std::chrono::steady_clock::now();
-
     State state = {
         .boardRow = 0,
         .boardColumn = 0,
@@ -97,39 +85,39 @@ void run(std::unordered_map<int, int> &buttonState,
         .lastExecuted = now,
         .isUnleashed = false};
 
-    const auto TURBO_INPUTS = std::unordered_set<int>{PAD_LEFT, PAD_RIGHT, PAD_UP, PAD_DOWN};
-    const auto INPUT_TO_MOUSE_MOVE = std::unordered_map<int, std::function<std::pair<int, int>()>>{
+    const auto TURBO_INPUTS = std::unordered_set<Buttons>{PAD_LEFT, PAD_RIGHT, PAD_UP, PAD_DOWN};
+    const auto INPUT_TO_MOUSE_MOVE = std::unordered_map<Buttons, std::function<std::pair<int, int>()>>{
         {PAD_LEFT, [&state]() { return getMouseTarget(state); }},
         {PAD_RIGHT, [&state]() { return getMouseTarget(state); }},
         {PAD_UP, [&state]() { return getMouseTarget(state); }},
         {PAD_DOWN, [&state]() { return getMouseTarget(state); }}};
-    const auto INPUT_TO_MOUSE_CLICK = std::unordered_map<int, std::function<int()>>{
+    const auto INPUT_TO_MOUSE_CLICK = std::unordered_map<Buttons, std::function<int()>>{
         {B, []() { return SDL_BUTTON_RIGHT; }},
         {R1, []() { return SDL_BUTTON_LEFT; }},
         {L1, []() { return SDL_BUTTON_LEFT; }},
         {Y, []() { return SDL_BUTTON_LEFT; }},
         {X, []() { return SDL_BUTTON_LEFT; }}};
-    const auto INPUT_TO_BUTTON_TOGGLE = std::unordered_map<int, std::function<int()>>{{A, []() { return SDL_BUTTON_LEFT; }}};
-    const auto RELEASE_TO_BUTTON_TOGGLE = std::unordered_map<int, std::function<int()>>{{A, []() { return SDL_BUTTON_LEFT; }}};
-    const auto INPUT_TO_CONDITIONING_LOGIC = std::unordered_map<int, std::function<bool()>>{
+    const auto INPUT_TO_BUTTON_TOGGLE = std::unordered_map<Buttons, std::function<int()>>{{A, []() { return SDL_BUTTON_LEFT; }}};
+    const auto RELEASE_TO_BUTTON_TOGGLE = std::unordered_map<Buttons, std::function<int()>>{{A, []() { return SDL_BUTTON_LEFT; }}};
+    const auto INPUT_TO_CONDITIONING_LOGIC = std::unordered_map<Buttons, std::function<bool()>>{
         {PAD_LEFT, [&state, &buttonState, &bufferState]() { return updateAbstractState(PAD_LEFT, state, buttonState, bufferState); }},
         {PAD_RIGHT, [&state, &buttonState, &bufferState]() { return updateAbstractState(PAD_RIGHT, state, buttonState, bufferState); }},
         {PAD_UP, [&state, &buttonState, &bufferState]() { return updateAbstractState(PAD_UP, state, buttonState, bufferState); }},
         {PAD_DOWN, [&state, &buttonState, &bufferState]() { return updateAbstractState(PAD_DOWN, state, buttonState, bufferState); }}};
-    const auto INPUT_TO_LOGIC_BEFORE = std::unordered_map<int, std::function<void()>>{
-        {L1, [resScalingX, resScalingY]() { functions::moveMouse(REMATCH.first, REMATCH.second, resScalingX, resScalingY); }},
-        {R1, [resScalingX, resScalingY]() { functions::moveMouse(PLAY_AGAIN.first, PLAY_AGAIN.second, resScalingX, resScalingY); }},
-        {X, [resScalingX, resScalingY]() { functions::moveMouse(DRAW.first, DRAW.second, resScalingX, resScalingY); }},
-        {Y, [resScalingX, resScalingY]() { functions::moveMouse(RESIGN.first, RESIGN.second, resScalingX, resScalingY); }}};
-    const auto INPUT_TO_LOGIC_AFTER = std::unordered_map<int, std::function<void()>>{
+    const auto INPUT_TO_LOGIC_BEFORE = std::unordered_map<Buttons, std::function<void()>>{
+        {L1, [resScalingX, resScalingY]() { functions::action::moveMouse(REMATCH.first, REMATCH.second, resScalingX, resScalingY); }},
+        {R1, [resScalingX, resScalingY]() { functions::action::moveMouse(PLAY_AGAIN.first, PLAY_AGAIN.second, resScalingX, resScalingY); }},
+        {X, [resScalingX, resScalingY]() { functions::action::moveMouse(DRAW.first, DRAW.second, resScalingX, resScalingY); }},
+        {Y, [resScalingX, resScalingY]() { functions::action::moveMouse(RESIGN.first, RESIGN.second, resScalingX, resScalingY); }}};
+    const auto INPUT_TO_LOGIC_AFTER = std::unordered_map<Buttons, std::function<void()>>{
         {L1, [&state, resScalingX, resScalingY]() { const auto [x, y] = BOARD_COORDINATES[state.boardRow][state.boardColumn];
-            functions::moveMouse(x, y, resScalingX, resScalingY); }},
+            functions::action::moveMouse(x, y, resScalingX, resScalingY); }},
         {R1, [&state, resScalingX, resScalingY]() { const auto [x, y] = BOARD_COORDINATES[state.boardRow][state.boardColumn];
-            functions::moveMouse(x, y, resScalingX, resScalingY); }},
+            functions::action::moveMouse(x, y, resScalingX, resScalingY); }},
         {X, [&state, resScalingX, resScalingY]() { state.mode = Mode::DRAW; const auto [x, y] = DRAW_YES_NO[0][state.drawColumn];
-            functions::moveMouse(x, y, resScalingX, resScalingY); }},
+            functions::action::moveMouse(x, y, resScalingX, resScalingY); }},
         {Y, [&state, resScalingX, resScalingY]() { state.mode = Mode::RESIGN; const auto [x, y] = RESIGN_YES_NO[0][state.resignColumn];
-            functions::moveMouse(x, y, resScalingX, resScalingY); }},
+            functions::action::moveMouse(x, y, resScalingX, resScalingY); }},
         {A, [&state]() { if (state.mode != Mode::BOARD) {state.mode = Mode::BOARD; state.drawColumn = 0; state.resignColumn = 0;}
         return true; }}};
 
@@ -143,34 +131,20 @@ void run(std::unordered_map<int, int> &buttonState,
         .input_to_logic_before = INPUT_TO_LOGIC_BEFORE,
         .input_to_logic_after = INPUT_TO_LOGIC_AFTER};
 
-    try {
-        while (true) {
-            const auto loopStartTime = std::chrono::steady_clock::now();
-            std::vector<SDL_Event> events;
-            SDL_Event eventBuffer;
-            while (SDL_PollEvent(&eventBuffer)) {
-                events.push_back(eventBuffer);
-            }
-            if (!running) {
-                functions::listenToRunEvent(events, buttonMapping, running);
-            } else {
-                // state
-                functions::updateNonAnalogState(buttonState, events, buttonMapping);
-                if (buttonState[ACTIVATE] == JUST_PRESSED) {
-                    running = false;
-                    continue;
-                }
+    functions::GameParams gameParams = {
+        .buttonMapping = buttonMapping,
+        .buttonState = buttonState,
+        .joystick = joystick,
+        .leftJoystick = leftJoystick,
+        .rightJoystick = rightJoystick,
+        .triggers = triggers,
+        .mappings = mappings,
+        .resScalingX = resScalingX,
+        .resScalingY = resScalingY,
+        .running = running,
+        .turboInputs = TURBO_INPUTS};
 
-                // action
-                functions::runMappings(mappings, resScalingX, resScalingY, TURBO_INPUTS);
-            }
-
-            std::this_thread::sleep_for(std::chrono::microseconds(std::max(
-                10000 - std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - loopStartTime).count(), 0LL)));
-        }
-    } catch (const std::exception &e) {
-        std::cerr << "Exception: " << e.what() << std::endl;
-    }
+    functions::run(gameParams);
 }
 
-} // namespace chess
+} // namespace gameRegistry

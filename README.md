@@ -12,7 +12,7 @@ This game has custom config. See inside its folder.
     X -> C
     Y -> O
     B (hold) -> TAB
-    L1 -> E (hold to add depth)
+    L1 -> E (hold to add depth)awds
     R1 -> R (hold to add depth)
     L2 (hold) -> enter high precision mode (e.g for Jinx rocket)
     R2 (hold) -> T

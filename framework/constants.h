@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <chrono>
 #include <string>
 #include <unordered_map>
@@ -8,12 +9,11 @@
 static constexpr int DEFAULT_SECOND_INPUT_DELAY_MILLIS = 200;
 static constexpr int DEFAULT_SUBSEQUENT_INPUT_DELAY_MILLIS = 50;
 static constexpr int MILLIS_PER_FRAME = 16;
-static constexpr int NONE = -1;
 static constexpr int CENTER_X = 960;
 static constexpr int CENTER_Y = 540;
-static constexpr std::pair<int, int> CENTER = {CENTER_X, CENTER_Y};
+static constexpr auto CENTER = std::make_pair(CENTER_X, CENTER_Y);
 
-enum Buttons {
+enum class Buttons {
     A,
     B,
     X,
@@ -39,15 +39,20 @@ enum Buttons {
     RIGHT_JS_LEFT,
     RIGHT_JS_RIGHT,
     RIGHT_JS_UP,
-    RIGHT_JS_DOWN
+    RIGHT_JS_DOWN,
+    NONE
 };
 
-enum ButtonGroups { LEFT_JS,
-                    RIGHT_JS,
-                    PAD,
-                    TRIGGERS };
+using enum Buttons;
 
-const std::unordered_map<std::string, int> BUTTON_NAME_TO_BUTTON_ID = {
+enum class ButtonGroups { LEFT_JS,
+                          RIGHT_JS,
+                          PAD,
+                          TRIGGERS };
+
+using enum ButtonGroups;
+
+const std::unordered_map<std::string, Buttons> BUTTON_NAME_TO_BUTTON_ID = {
     {"A", A},
     {"B", B},
     {"X", X},
@@ -75,12 +80,19 @@ const std::unordered_map<std::string, int> BUTTON_NAME_TO_BUTTON_ID = {
     {"RIGHT_JS_UP", RIGHT_JS_UP},
     {"RIGHT_JS_DOWN", RIGHT_JS_DOWN}};
 
-enum ButtonState {
+const std::unordered_map<ButtonGroups, std::array<Buttons, 4>> BUTTON_GROUP_TO_BUTTONS = {
+    {LEFT_JS, std::array<Buttons, 4>{{LEFT_JS_LEFT, LEFT_JS_RIGHT, LEFT_JS_UP, LEFT_JS_DOWN}}},
+    {RIGHT_JS, std::array<Buttons, 4>{{RIGHT_JS_LEFT, RIGHT_JS_RIGHT, RIGHT_JS_UP, RIGHT_JS_DOWN}}},
+    {PAD, std::array<Buttons, 4>{{PAD_LEFT, PAD_RIGHT, PAD_UP, PAD_DOWN}}}};
+
+enum class ButtonState {
     PRESSED,
     JUST_PRESSED,
     JUST_RELEASED,
     RELEASED,
 };
+
+using enum ButtonState;
 
 struct BufferState {
     std::chrono::steady_clock::time_point lastPressed;
@@ -88,5 +100,5 @@ struct BufferState {
     bool isUnleashed;
 };
 
-const std::unordered_set<int> PRESSED_STATES = {PRESSED, JUST_PRESSED};
-const std::unordered_set<int> RELEASED_STATES = {RELEASED, JUST_RELEASED};
+const std::unordered_set<ButtonState> PRESSED_STATES = {PRESSED, JUST_PRESSED};
+const std::unordered_set<ButtonState> RELEASED_STATES = {RELEASED, JUST_RELEASED};

@@ -1,5 +1,4 @@
 #include "configParser.h"
-#include "constants.h"
 
 namespace configParser {
 
@@ -31,25 +30,20 @@ Joystick readTriggerJoystick(const Json::Value &config) {
 
 } // namespace
 
-std::unordered_map<int, int> readButtonMapping(const Json::Value &config) {
-    std::unordered_map<int, int> buttonMapping;
+std::unordered_map<Uint8, Buttons> readButtonMapping(const Json::Value &config) {
+    std::unordered_map<Uint8, Buttons> buttonMapping;
     for (const std::string &configKey : config["button_mapping"].getMemberNames()) {
-        const int key = config["button_mapping"][configKey].asInt() - 1;
+        const auto key = static_cast<Uint8>(config["button_mapping"][configKey].asInt() - 1);
         buttonMapping[key] = BUTTON_NAME_TO_BUTTON_ID.at(configKey);
     }
     return buttonMapping;
 }
 
-void initializeJoysticks(const Json::Value &config, Joystick *left,
-                         Joystick *right, Joystick *trigger) {
-    if (left) {
-        *left = readLeftJoystick(config);
-    }
-    if (right) {
-        *right = readRightJoystick(config);
-    }
-    if (trigger) {
-        *trigger = readTriggerJoystick(config);
+void initializeJoysticks(const Json::Value &config, Joystick &left, Joystick &right, Joystick *&triggers) {
+    left = readLeftJoystick(config);
+    right = readRightJoystick(config);
+    if (triggers) {
+        *triggers = readTriggerJoystick(config);
     }
 }
 
