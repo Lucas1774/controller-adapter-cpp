@@ -29,7 +29,7 @@ constexpr std::array<std::array<int, 6>, 1> OVERLAY_KEYS = {
     {{{VK_LMENU, '4', '5', '6', '7', '8'}}}};
 
 static void updateAbstractState(const Buttons button, State &state, const std::unordered_map<Buttons, ButtonState> &buttonState, BufferState &bufferState) {
-    static const std::map<Buttons, std::function<bool()>> keyToFunction = {
+    static const std::unordered_map<Buttons, std::function<bool()>> keyToFunction = {
         {L1, [&state]() {
              return functions::abstractStateUtils::computeGridBasedTarget(BUILD_MENU_KEYS.size(), BUILD_MENU_KEYS[0].size(), state.buildMenuRow, state.buildMenuColumn, PAD_RIGHT);
          }},
@@ -109,14 +109,14 @@ void runFrostpunkTwo(const GameParams &params) {
 
     functions::Mappings mappings = {
         .buttonState = buttonState,
-        .input_to_mouse_move = INPUT_TO_MOUSE_MOVE,
-        .input_to_mouse_click = INPUT_TO_MOUSE_CLICK,
-        .input_to_key_tap = INPUT_TO_KEY_TAP,
-        .input_to_key_hold = INPUT_TO_KEY_HOLD,
-        .joystick_to_mouse_relative = JOYSTICK_TO_MOUSE_RELATIVE,
-        .input_to_logic_before = INPUT_TO_LOGIC_BEFORE,
-        .input_to_logic_after = INPUT_TO_LOGIC_AFTER,
-        .release_to_logic_after = RELEASE_TO_LOGIC_AFTER};
+        .inputToMouseMove = INPUT_TO_MOUSE_MOVE,
+        .inputToMouseClick = INPUT_TO_MOUSE_CLICK,
+        .inputToKeyTap = INPUT_TO_KEY_TAP,
+        .inputToKeyHold = INPUT_TO_KEY_HOLD,
+        .joystickToMouseRelative = JOYSTICK_TO_MOUSE_RELATIVE,
+        .inputToLogicBefore = INPUT_TO_LOGIC_BEFORE,
+        .inputToLogicAfter = INPUT_TO_LOGIC_AFTER,
+        .releaseToLogicAfter = RELEASE_TO_LOGIC_AFTER};
 
     functions::GameParams gameParams = {
         .buttonMapping = buttonMapping,

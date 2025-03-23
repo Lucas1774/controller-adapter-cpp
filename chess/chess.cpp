@@ -43,7 +43,7 @@ static bool updateAbstractState(const Buttons button, State &state, const std::u
         return false;
     }
 
-    static const std::map<Mode, std::function<bool()>> modeToFunction = {
+    static const std::unordered_map<Mode, std::function<bool()>> modeToFunction = {
         {Mode::BOARD, [&state, &button]() {
              return functions::abstractStateUtils::computeGridBasedTarget(BOARD_COORDINATES.size(), BOARD_COORDINATES[0].size(), state.boardRow, state.boardColumn, button);
          }},
@@ -123,13 +123,13 @@ void runChess(const GameParams &params) {
 
     functions::Mappings mappings = {
         .buttonState = buttonState,
-        .input_to_mouse_move = INPUT_TO_MOUSE_MOVE,
-        .input_to_mouse_click = INPUT_TO_MOUSE_CLICK,
-        .input_to_button_toggle = INPUT_TO_BUTTON_TOGGLE,
-        .release_to_button_toggle = RELEASE_TO_BUTTON_TOGGLE,
-        .input_to_conditioning_logic = INPUT_TO_CONDITIONING_LOGIC,
-        .input_to_logic_before = INPUT_TO_LOGIC_BEFORE,
-        .input_to_logic_after = INPUT_TO_LOGIC_AFTER};
+        .inputToMouseMove = INPUT_TO_MOUSE_MOVE,
+        .inputToMouseClick = INPUT_TO_MOUSE_CLICK,
+        .inputToButtonToggle = INPUT_TO_BUTTON_TOGGLE,
+        .releaseToButtonToggle = RELEASE_TO_BUTTON_TOGGLE,
+        .inputToConditioningLogic = INPUT_TO_CONDITIONING_LOGIC,
+        .inputToLogicBefore = INPUT_TO_LOGIC_BEFORE,
+        .inputToLogicAfter = INPUT_TO_LOGIC_AFTER};
 
     functions::GameParams gameParams = {
         .buttonMapping = buttonMapping,

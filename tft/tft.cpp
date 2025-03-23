@@ -27,7 +27,7 @@ struct State {
     int cardColumn;
     int lockIndex;
     MouseMovementWithPadMode mode;
-    MouseMovementWithPadMode previous_mode;
+    MouseMovementWithPadMode previousMode;
 };
 
 static constexpr std::array<std::pair<int, int>, 8> MOVE_COORDINATES = {
@@ -100,7 +100,7 @@ static bool updateAbstractState(const Buttons button, State &state, const std::u
         return true;
     }
 
-    static const std::map<MouseMovementWithPadMode, std::function<bool()>> modeToFunction = {
+    static const std::unordered_map<MouseMovementWithPadMode, std::function<bool()>> modeToFunction = {
         {ITEMS, [&state, &button]() {
              return functions::abstractStateUtils::computeGridBasedTarget(ITEM_COORDINATES.size(), ITEM_COORDINATES[0].size(), state.itemRow, state.itemColumn, button);
          }},
@@ -145,7 +145,7 @@ void runTft(const GameParams &params) {
         .cardColumn = 1,
         .lockIndex = 0,
         .mode = BOARD,
-        .previous_mode = BOARD};
+        .previousMode = BOARD};
     BufferState buffer_state = {
         .lastPressed = now,
         .lastExecuted = now,
@@ -189,12 +189,12 @@ void runTft(const GameParams &params) {
         {R3, [&state]() {
              if (state.mode == CARDS) {
                  state.mode = BOARD;
-                 state.previous_mode = BOARD;
+                 state.previousMode = BOARD;
                  state.boardRow = 0;
                  state.boardColumn = 0;
              } else {
                  state.mode = CARDS;
-                 state.previous_mode = CARDS;
+                 state.previousMode = CARDS;
                  state.cardRow = 0;
                  state.cardColumn = 1;
              }
@@ -218,9 +218,9 @@ void runTft(const GameParams &params) {
         {LEFT_JS_DOWN, [&buttonState, resScalingX, resScalingY] { auto [x, y] = MOVE_COORDINATES[functions::abstractStateUtils::generateAxisTargetWithBitMask(buttonState, LEFT_JS)];
             functions::action::moveMouse(x, y, resScalingX, resScalingY); }}};
     const auto RELEASE_TO_LOGIC_BEFORE = std::unordered_map<Buttons, std::function<void()>>{
-        {L1, [&state]() { state.mode = BOARD; state.previous_mode = BOARD; }},
+        {L1, [&state]() { state.mode = BOARD; state.previousMode = BOARD; }},
         {R1, [&state]() {
-            state.mode = state.previous_mode; if (state.mode == BOARD) {
+            state.mode = state.previousMode; if (state.mode == BOARD) {
                 state.boardRow = 0;
                 state.boardColumn = 0;
             } }}};
@@ -236,16 +236,16 @@ void runTft(const GameParams &params) {
 
     functions::Mappings mappings = {
         .buttonState = buttonState,
-        .input_to_mouse_move = INPUT_TO_MOUSE_MOVE,
-        .release_to_mouse_move = RELEASE_TO_MOUSE_MOVE,
-        .input_to_mouse_click = INPUT_TO_MOUSE_CLICK,
-        .input_to_button_toggle = INPUT_TO_BUTTON_TOGGLE,
-        .input_to_key_tap = INPUT_TO_KEY_TAP,
-        .joystick_to_mouse_relative = JOYSTICK_TO_MOUSE_RELATIVE,
-        .input_to_conditioning_logic = INPUT_TO_CONDITIONAL_LOGIC,
-        .input_to_logic_before = INPUT_TO_LOGIC_BEFORE,
-        .release_to_logic_before = RELEASE_TO_LOGIC_BEFORE,
-        .input_to_logic_after = INPUT_TO_LOGIC_AFTER};
+        .inputToMouseMove = INPUT_TO_MOUSE_MOVE,
+        .releaseToMouseMove = RELEASE_TO_MOUSE_MOVE,
+        .inputToMouseClick = INPUT_TO_MOUSE_CLICK,
+        .inputToButtonToggle = INPUT_TO_BUTTON_TOGGLE,
+        .inputToKeyTap = INPUT_TO_KEY_TAP,
+        .joystickToMouseRelative = JOYSTICK_TO_MOUSE_RELATIVE,
+        .inputToConditioningLogic = INPUT_TO_CONDITIONAL_LOGIC,
+        .inputToLogicBefore = INPUT_TO_LOGIC_BEFORE,
+        .releaseToLogicBefore = RELEASE_TO_LOGIC_BEFORE,
+        .inputToLogicAfter = INPUT_TO_LOGIC_AFTER};
 
     functions::GameParams gameParams = {
         .buttonMapping = buttonMapping,

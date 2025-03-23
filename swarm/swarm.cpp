@@ -141,17 +141,17 @@ void runSwarm(const GameParams &params) {
 
     functions::Mappings mappings = {
         .buttonState = buttonState,
-        .input_to_mouse_move = INPUT_TO_MOUSE_MOVE,
-        .input_to_mouse_click = INPUT_TO_MOUSE_CLICK,
-        .input_to_key_tap = INPUT_TO_KEY_TAP,
-        .release_to_key_tap = RELEASE_TO_KEY_TAP,
-        .input_to_key_hold = INPUT_TO_KEY_HOLD,
-        .joystick_to_mouse_relative = JOYSTICK_TO_MOUSE_RELATIVE,
-        .input_to_conditioning_logic = INPUT_TO_CONDITIONING_LOGIC,
-        .input_to_logic_before = INPUT_TO_LOGIC_BEFORE,
-        .release_to_logic_before = RELEASE_TO_LOGIC_BEFORE,
-        .input_to_logic_after = INPUT_TO_LOGIC_AFTER,
-        .release_to_logic_after = RELEASE_TO_LOGIC_AFTER};
+        .inputToMouseMove = INPUT_TO_MOUSE_MOVE,
+        .inputToMouseClick = INPUT_TO_MOUSE_CLICK,
+        .inputToKeyTap = INPUT_TO_KEY_TAP,
+        .releaseToKeyTap = RELEASE_TO_KEY_TAP,
+        .inputToKeyHold = INPUT_TO_KEY_HOLD,
+        .joystickToMouseRelative = JOYSTICK_TO_MOUSE_RELATIVE,
+        .inputToConditioningLogic = INPUT_TO_CONDITIONING_LOGIC,
+        .inputToLogicBefore = INPUT_TO_LOGIC_BEFORE,
+        .releaseToLogicBefore = RELEASE_TO_LOGIC_BEFORE,
+        .inputToLogicAfter = INPUT_TO_LOGIC_AFTER,
+        .releaseToLogicAfter = RELEASE_TO_LOGIC_AFTER};
 
     functions::GameParams gameParams = {
         .buttonMapping = buttonMapping,

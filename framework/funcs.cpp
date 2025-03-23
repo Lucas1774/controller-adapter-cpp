@@ -10,7 +10,8 @@ using enum Buttons;
 using enum ButtonState;
 using enum ButtonGroups;
 
-void run(GameParams &gameParams) {
+void run(const GameParams &gameParams) {
+    auto [buttonMapping, buttonState, joystick, leftJoystick, rightJoystick, triggers, mappings, resScalingX, resScalingY, running, turboInputs] = gameParams;
     try {
         while (true) {
             const auto loopStartTime = std::chrono::steady_clock::now();
@@ -19,28 +20,28 @@ void run(GameParams &gameParams) {
             while (SDL_PollEvent(&eventBuffer)) {
                 events.push_back(eventBuffer);
             }
-            if (!gameParams.running) {
+            if (!running) {
                 for (const auto &event : events) {
                     if (event.type == SDL_JOYBUTTONDOWN) {
-                        const Buttons button = gameParams.buttonMapping.at(event.jbutton.button);
+                        const Buttons button = buttonMapping.at(event.jbutton.button);
                         if (button == ACTIVATE) {
-                            gameParams.running = true;
+                            running = true;
                             break;
                         }
                     }
                 }
             } else {
-                functions::state::updateNonAnalogState(gameParams.buttonState, events, gameParams.buttonMapping);
-                if (gameParams.buttonState[ACTIVATE] == JUST_PRESSED) {
-                    gameParams.running = false;
+                functions::state::updateNonAnalogState(buttonState, events, buttonMapping);
+                if (buttonState[ACTIVATE] == JUST_PRESSED) {
+                    running = false;
                     continue;
                 }
-                functions::state::updateJoystick(gameParams.buttonState, gameParams.joystick, gameParams.leftJoystick, LEFT_JS);
-                functions::state::updateJoystick(gameParams.buttonState, gameParams.joystick, gameParams.rightJoystick, RIGHT_JS);
-                if (gameParams.triggers != nullptr) {
-                    functions::state::updateJoystick(gameParams.buttonState, gameParams.joystick, *gameParams.triggers, TRIGGERS);
+                functions::state::updateJoystick(buttonState, joystick, leftJoystick, LEFT_JS);
+                functions::state::updateJoystick(buttonState, joystick, rightJoystick, RIGHT_JS);
+                if (triggers) {
+                    functions::state::updateJoystick(buttonState, joystick, *triggers, TRIGGERS);
                 }
-                functions::action::runMappings(gameParams.mappings, gameParams.resScalingX, gameParams.resScalingY, gameParams.turboInputs);
+                functions::action::runMappings(mappings, resScalingX, resScalingY, turboInputs);
             }
 
             std::this_thread::sleep_for(std::chrono::microseconds(std::max(
@@ -62,7 +63,7 @@ const std::unordered_map<int, int> BUTTON_ID_TO_RELEASE_EVENT = {
     {SDL_BUTTON_RIGHT, MOUSEEVENTF_RIGHTUP},
     {SDL_BUTTON_MIDDLE, MOUSEEVENTF_MIDDLEUP}};
 
-void sendInput(const int key, const DWORD flags) {
+void sendInput(const int key, const int flags) {
     INPUT ip = {0};
     ip.type = INPUT_KEYBOARD;
     ip.ki.wScan = static_cast<WORD>(MapVirtualKey(key, MAPVK_VK_TO_VSC));
@@ -70,12 +71,15 @@ void sendInput(const int key, const DWORD flags) {
     SendInput(1, &ip, sizeof(INPUT));
 }
 
-bool actionCallbackBefore(const functions::Mappings &mappings, const Buttons &input) {
-    const auto &map = mappings.input_to_conditioning_logic;
-    if (const auto &action = map.find(input); action != map.end()) {
+bool actionCallbackBefore(const std::unordered_map<Buttons, std::function<bool()>> &callbackMaps, const Buttons &input) {
+    if (const auto &action = callbackMaps.find(input); action != callbackMaps.end()) {
         return action->second();
     }
     return true;
+}
+
+bool actionIsTurbo(const std::unordered_map<Buttons, ButtonState> &buttonState, const std::unordered_set<Buttons> &turboInputs, const Buttons &input) {
+    return turboInputs.contains(input) && buttonState.at(input) == PRESSED;
 }
 
 void pressButton(const int button_to_press) {
@@ -115,60 +119,113 @@ void handleState(ButtonState &state, const bool is_pressed) {
 namespace action {
 
 void runMappings(const Mappings &mappings, double resScalingX, double resScalingY, const std::unordered_set<Buttons> &turboInputs) {
+    auto &callbacksMap = mappings.inputToConditioningLogic;
+    auto &buttonState = mappings.buttonState;
 
-    static const auto &runRawLogic = [&mappings, &turboInputs](const auto &mapping, const ButtonState eventType) {
-        for (const auto &[input, logic] : mapping) {
-            const ButtonState state = mappings.buttonState.at(input);
-            if (eventType == JUST_PRESSED && turboInputs.find(input) != turboInputs.end() && state == PRESSED) {
-                logic();
-            }
-            if (state == eventType) {
-                logic();
-            }
+    for (const auto &[input, logic] : mappings.inputToLogicBefore) {
+        if (buttonState.at(input) == JUST_PRESSED || actionIsTurbo(buttonState, turboInputs, input)) {
+            logic();
         }
-    };
-
-    static const auto &callHandler = [&mappings, &turboInputs](const auto &mapping, const auto &handler, const ButtonState eventType) {
-        for (const auto &[input, _] : mapping) {
-            if (eventType == JUST_PRESSED && turboInputs.find(input) != turboInputs.end()) {
-                handler(mappings, input, PRESSED, -1);
-            }
-            handler(mappings, input, eventType, -1);
-        }
-    };
-
-    static const auto &callHandlerWithResScaling = [&mappings, &turboInputs, resScalingX, resScalingY](const auto &mapping, const auto &handler, const ButtonState eventType) {
-        for (const auto &[input, _] : mapping) {
-            if (eventType == JUST_PRESSED && turboInputs.find(input) != turboInputs.end()) {
-                handler(mappings, input, PRESSED, resScalingX, resScalingY);
-            }
-            handler(mappings, input, eventType, resScalingX, resScalingY);
-        }
-    };
-
-    // logic before
-    runRawLogic(mappings.input_to_logic_before, JUST_PRESSED);
-    runRawLogic(mappings.release_to_logic_before, JUST_RELEASED);
-    // standard
-    callHandler(mappings.input_to_mouse_click, handleToClick, JUST_PRESSED);
-    callHandler(mappings.release_to_mouse_click, handleToClick, JUST_RELEASED);
-    callHandler(mappings.input_to_button_toggle, handleToButtonToggle, JUST_PRESSED);
-    callHandler(mappings.release_to_button_toggle, handleToButtonToggle, JUST_RELEASED);
-    callHandler(mappings.input_to_key_tap, handleToKeyTap, JUST_PRESSED);
-    callHandler(mappings.release_to_key_tap, handleToKeyTap, JUST_RELEASED);
-    // res scaled
-    callHandlerWithResScaling(mappings.input_to_mouse_move, handleToMouseAbsoluteMove, JUST_PRESSED);
-    callHandlerWithResScaling(mappings.release_to_mouse_move, handleToMouseAbsoluteMove, JUST_RELEASED);
-    // event independent
-    for (const auto &[input, _] : mappings.input_to_key_hold) {
-        handleToKeyHold(mappings, input);
     }
-    for (const auto &[buttonGroup, joystickSupplier] : mappings.joystick_to_mouse_relative) {
-        handleJoystickToMouseRelative(mappings, buttonGroup, joystickSupplier(), resScalingX, resScalingY);
+    for (const auto &[input, logic] : mappings.releaseToLogicBefore) {
+        if (buttonState.at(input) == JUST_RELEASED) {
+            logic();
+        }
     }
-    // logic after
-    runRawLogic(mappings.input_to_logic_after, JUST_PRESSED);
-    runRawLogic(mappings.release_to_logic_after, JUST_RELEASED);
+    for (const auto &[input, coordinateSupplier] : mappings.inputToMouseMove) {
+        if ((buttonState.at(input) == JUST_PRESSED || actionIsTurbo(buttonState, turboInputs, input)) && actionCallbackBefore(callbacksMap, input)) {
+            auto [x, y] = coordinateSupplier();
+            moveMouse(x, y, resScalingX, resScalingY);
+        }
+    }
+    for (const auto &[input, coordinateSupplier] : mappings.releaseToMouseMove) {
+        if (buttonState.at(input) == JUST_RELEASED && actionCallbackBefore(callbacksMap, input)) {
+            auto [x, y] = coordinateSupplier();
+            moveMouse(x, y, resScalingX, resScalingY);
+        }
+    }
+    for (const auto &[input, buttonSupplier] : mappings.inputToMouseClick) {
+        if ((buttonState.at(input) == JUST_PRESSED || actionIsTurbo(buttonState, turboInputs, input)) && actionCallbackBefore(callbacksMap, input)) {
+            click(buttonSupplier());
+        }
+    }
+    for (const auto &[input, buttonSupplier] : mappings.releaseToMouseClick) {
+        if (buttonState.at(input) == JUST_RELEASED && actionCallbackBefore(callbacksMap, input)) {
+            click(buttonSupplier());
+        }
+    }
+    for (const auto &[input, buttonSupplier] : mappings.inputToButtonToggle) {
+        if ((buttonState.at(input) == JUST_PRESSED || actionIsTurbo(buttonState, turboInputs, input)) && actionCallbackBefore(callbacksMap, input)) {
+            int key = buttonSupplier();
+            if (!(GetAsyncKeyState(key) & 0x8000)) {
+                pressButton(key);
+            } else {
+                releaseButton(key);
+            }
+        }
+    }
+    for (const auto &[input, buttonSupplier] : mappings.releaseToButtonToggle) {
+        if (buttonState.at(input) == JUST_RELEASED && actionCallbackBefore(callbacksMap, input)) {
+            int key = buttonSupplier();
+            if (!(GetAsyncKeyState(key) & 0x8000)) {
+                pressButton(key);
+            } else {
+                releaseButton(key);
+            }
+        }
+    }
+    for (const auto &[input, keySupplier] : mappings.inputToKeyTap) {
+        if ((buttonState.at(input) == JUST_PRESSED || actionIsTurbo(buttonState, turboInputs, input)) && actionCallbackBefore(callbacksMap, input)) {
+            int key = keySupplier();
+            std::jthread([key] { pressThenRelease(key); }).detach();
+        }
+    }
+    for (const auto &[input, keySupplier] : mappings.releaseToKeyTap) {
+        if (buttonState.at(input) == JUST_RELEASED && actionCallbackBefore(callbacksMap, input)) {
+            int key = keySupplier();
+            std::jthread([key] { pressThenRelease(key); }).detach();
+        }
+    }
+    for (const auto &[input, keySupplier] : mappings.inputToKeyHold) {
+        int eventFlag;
+        switch (buttonState.at(input)) {
+        case JUST_PRESSED:
+            eventFlag = KEYEVENTF_SCANCODE;
+            break;
+        case JUST_RELEASED:
+            eventFlag = KEYEVENTF_KEYUP;
+            break;
+        default:
+            continue;
+        }
+        if (actionCallbackBefore(callbacksMap, input)) {
+            sendInput(keySupplier(), eventFlag);
+        }
+    }
+    for (const auto &[inputGroup, joystickSupplier] : mappings.joystickToMouseRelative) {
+        for (const auto &input : BUTTON_GROUP_TO_BUTTONS.at(inputGroup)) {
+            if (PRESSED_STATES.contains(buttonState.at(input))) {
+                if (actionCallbackBefore(callbacksMap, input)) {
+                    const auto &joystick = joystickSupplier();
+                    functions::action::moveMouseRelative(
+                        static_cast<int>(joystick.x * joystick.x * joystick.sensitivity * 100 * (joystick.x / std::abs(joystick.x))),
+                        static_cast<int>(joystick.y * joystick.y * joystick.sensitivity * 100 * (joystick.y / std::abs(joystick.y))),
+                        resScalingX, resScalingY);
+                }
+                break;
+            }
+        }
+    }
+    for (const auto &[input, logic] : mappings.inputToLogicAfter) {
+        if (buttonState.at(input) == JUST_PRESSED || actionIsTurbo(buttonState, turboInputs, input)) {
+            logic();
+        }
+    }
+    for (const auto &[input, logic] : mappings.releaseToLogicAfter) {
+        if (buttonState.at(input) == JUST_RELEASED) {
+            logic();
+        }
+    }
 }
 
 void moveMouse(const int x, const int y, const double resScalingX, const double resScalingY) {
@@ -181,92 +238,13 @@ void moveMouseRelative(const int x, const int y, const double resScalingX, const
     SetCursorPos(static_cast<int>(p.x + x * resScalingX), static_cast<int>(p.y + y * resScalingY));
 }
 
-void click(const int button_to_click) {
+void click(const int button) {
     std::array<INPUT, 2> ip = {0};
     ip[0].type = INPUT_MOUSE;
-    ip[0].mi.dwFlags = BUTTON_ID_TO_PRESS_EVENT.at(button_to_click);
+    ip[0].mi.dwFlags = BUTTON_ID_TO_PRESS_EVENT.at(button);
     ip[1].type = INPUT_MOUSE;
-    ip[1].mi.dwFlags = BUTTON_ID_TO_RELEASE_EVENT.at(button_to_click);
+    ip[1].mi.dwFlags = BUTTON_ID_TO_RELEASE_EVENT.at(button);
     SendInput(2, ip.data(), sizeof(INPUT));
-}
-
-void handleToMouseAbsoluteMove(const Mappings &mappings, const Buttons &input, const ButtonState eventType, const double resScalingX, const double resScalingY) {
-    if (mappings.buttonState.at(input) == eventType && actionCallbackBefore(mappings, input)) {
-        const auto [x, y] = PRESSED_STATES.contains(eventType) ? mappings.input_to_mouse_move.at(input)() : mappings.release_to_mouse_move.at(input)();
-        moveMouse(x, y, resScalingX, resScalingY);
-    }
-}
-
-void handleToClick(const Mappings &mappings, const Buttons &input, const ButtonState eventType, const int button) {
-    if (mappings.buttonState.at(input) == eventType && actionCallbackBefore(mappings, input)) {
-        int actualButton;
-        if (button != -1) {
-            actualButton = button;
-        } else {
-            actualButton = PRESSED_STATES.contains(eventType) ? mappings.input_to_mouse_click.at(input)() : mappings.release_to_mouse_click.at(input)();
-        }
-        click(actualButton);
-    }
-}
-
-void handleToButtonToggle(const Mappings &mappings, const Buttons &input, const ButtonState eventType, const int button) {
-    if (mappings.buttonState.at(input) == eventType && actionCallbackBefore(mappings, input)) {
-        int actualButton;
-        if (button != -1) {
-            actualButton = button;
-        } else {
-            actualButton = PRESSED_STATES.contains(eventType) ? mappings.input_to_button_toggle.at(input)() : mappings.release_to_button_toggle.at(input)();
-        }
-        if (!(GetAsyncKeyState(actualButton) & 0x8000)) {
-            pressButton(actualButton);
-        } else {
-            releaseButton(actualButton);
-        }
-    }
-}
-
-void handleToKeyTap(const Mappings &mappings, const Buttons &input, const ButtonState eventType, const int key) {
-    if (mappings.buttonState.at(input) == eventType && actionCallbackBefore(mappings, input)) {
-        int actualKey;
-        if (key != -1) {
-            actualKey = key;
-        } else {
-            actualKey = PRESSED_STATES.contains(eventType) ? mappings.input_to_key_tap.at(input)() : mappings.release_to_key_tap.at(input)();
-        }
-        std::jthread([actualKey] { pressThenRelease(actualKey); }).detach();
-    }
-}
-
-void handleToKeyHold(const Mappings &mappings, const Buttons &input, const int key) {
-    int eventFlag;
-    switch (mappings.buttonState.at(input)) {
-    case JUST_PRESSED:
-        eventFlag = KEYEVENTF_SCANCODE;
-        break;
-    case JUST_RELEASED:
-        eventFlag = KEYEVENTF_KEYUP;
-        break;
-    default:
-        return;
-    }
-    if (actionCallbackBefore(mappings, input)) {
-        const int actualKey = key != -1 ? key : mappings.input_to_key_hold.at(input)();
-        sendInput(actualKey, eventFlag);
-    }
-}
-
-void handleJoystickToMouseRelative(const Mappings &mappings, const ButtonGroups &input, const Joystick &joystick, const double resScalingX, const double resScalingY) {
-    for (const auto &button : BUTTON_GROUP_TO_BUTTONS.at(input)) {
-        if (PRESSED_STATES.contains(mappings.buttonState.at(button))) {
-            if (actionCallbackBefore(mappings, button)) {
-                functions::action::moveMouseRelative(
-                    static_cast<int>(joystick.x * joystick.x * joystick.sensitivity * 100 * (joystick.x / std::abs(joystick.x))),
-                    static_cast<int>(joystick.y * joystick.y * joystick.sensitivity * 100 * (joystick.y / std::abs(joystick.y))),
-                    resScalingX, resScalingY);
-            }
-            return;
-        }
-    }
 }
 
 } // namespace action
@@ -329,12 +307,12 @@ void updateJoystick(std::unordered_map<Buttons, ButtonState> &buttonState, SDL_J
 
 namespace abstractStateUtils {
 
-bool isBufferFree(const std::unordered_map<Buttons, ButtonState> &buttonState, const int second_input_delay_mills,
-                  const int subsequent_inputs_delay_millis, const Buttons &button, BufferState &bufferState) {
+bool isBufferFree(const std::unordered_map<Buttons, ButtonState> &buttonState, const int secondInputDelayMillis,
+                  const int subsequentInputDelayMillis, const Buttons &button, BufferState &bufferState) {
     const auto now = std::chrono::steady_clock::now();
-    if (now - bufferState.lastExecuted <= std::chrono::milliseconds(subsequent_inputs_delay_millis)) {
+    if (now - bufferState.lastExecuted <= std::chrono::milliseconds(subsequentInputDelayMillis)) {
         return false;
-    } else if (!bufferState.isUnleashed && now - bufferState.lastPressed <= std::chrono::milliseconds(second_input_delay_mills)) {
+    } else if (!bufferState.isUnleashed && now - bufferState.lastPressed <= std::chrono::milliseconds(secondInputDelayMillis)) {
         return false;
     } else {
         bufferState.lastExecuted = now;

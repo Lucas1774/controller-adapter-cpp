@@ -21,9 +21,7 @@ struct GameParams {
     Joystick *triggers;
 };
 
-void runGame(const std::string &name,
-             const GameParams &params);
-
+void runGame(const std::string &name, const GameParams &params);
 void runFrostpunkTwo(const GameParams &params);
 void runSwarm(const GameParams &params);
 void runChess(const GameParams &params);

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef CONSTANTS_H
+#define CONSTANTS_H
 
 #include <array>
 #include <chrono>
@@ -45,10 +46,12 @@ enum class Buttons {
 
 using enum Buttons;
 
-enum class ButtonGroups { LEFT_JS,
-                          RIGHT_JS,
-                          PAD,
-                          TRIGGERS };
+enum class ButtonGroups {
+    LEFT_JS,
+    RIGHT_JS,
+    PAD,
+    TRIGGERS
+};
 
 using enum ButtonGroups;
 
@@ -102,3 +105,5 @@ struct BufferState {
 
 const std::unordered_set<ButtonState> PRESSED_STATES = {PRESSED, JUST_PRESSED};
 const std::unordered_set<ButtonState> RELEASED_STATES = {RELEASED, JUST_RELEASED};
+
+#endif // CONSTANTS_H
