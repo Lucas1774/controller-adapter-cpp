@@ -67,7 +67,7 @@ void sendInput(const int key, const int flags) {
     INPUT ip = {0};
     ip.type = INPUT_KEYBOARD;
     ip.ki.wScan = static_cast<WORD>(MapVirtualKey(key, MAPVK_VK_TO_VSC));
-    ip.ki.dwFlags = flags;
+    ip.ki.dwFlags = flags | KEYEVENTF_SCANCODE;
     SendInput(1, &ip, sizeof(INPUT));
 }
 
@@ -97,7 +97,7 @@ void releaseButton(const int button_to_release) {
 }
 
 void pressThenRelease(const int key_to_tap) {
-    sendInput(key_to_tap, KEYEVENTF_SCANCODE);
+    sendInput(key_to_tap, 0);
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
     sendInput(key_to_tap, KEYEVENTF_KEYUP);
 }
@@ -190,7 +190,7 @@ void runMappings(const Mappings &mappings, double resScalingX, double resScaling
         int eventFlag;
         switch (buttonState.at(input)) {
         case JUST_PRESSED:
-            eventFlag = KEYEVENTF_SCANCODE;
+            eventFlag = 0;
             break;
         case JUST_RELEASED:
             eventFlag = KEYEVENTF_KEYUP;
@@ -208,8 +208,8 @@ void runMappings(const Mappings &mappings, double resScalingX, double resScaling
                 if (actionCallbackBefore(callbacksMap, input)) {
                     const auto &joystick = joystickSupplier();
                     functions::action::moveMouseRelative(
-                        static_cast<int>(joystick.x * joystick.x * joystick.sensitivity * 100 * (joystick.x / std::abs(joystick.x))),
-                        static_cast<int>(joystick.y * joystick.y * joystick.sensitivity * 100 * (joystick.y / std::abs(joystick.y))),
+                        static_cast<int>(round(joystick.x * joystick.x * joystick.sensitivity * 100 * (joystick.x / std::abs(joystick.x)))),
+                        static_cast<int>(round(joystick.y * joystick.y * joystick.sensitivity * 100 * (joystick.y / std::abs(joystick.y)))),
                         resScalingX, resScalingY);
                 }
                 break;
@@ -233,9 +233,7 @@ void moveMouse(const int x, const int y, const double resScalingX, const double 
 }
 
 void moveMouseRelative(const int x, const int y, const double resScalingX, const double resScalingY) {
-    POINT p;
-    GetCursorPos(&p);
-    SetCursorPos(static_cast<int>(p.x + x * resScalingX), static_cast<int>(p.y + y * resScalingY));
+    mouse_event(MOUSEEVENTF_MOVE, static_cast<int>(x * resScalingX), static_cast<int>(y * resScalingY), 0, GetMessageExtraInfo());
 }
 
 void click(const int button) {
