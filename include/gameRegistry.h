@@ -26,6 +26,7 @@ void runFrostpunkTwo(const GameParams &params);
 void runSwarm(const GameParams &params);
 void runChess(const GameParams &params);
 void runTft(const GameParams &params);
+void runMegabonk(const GameParams &params);
 
 } // namespace gameRegistry
 

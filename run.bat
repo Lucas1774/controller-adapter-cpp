@@ -1,2 +1,2 @@
-.\mapper.exe frostpunk2
+.\mapper.exe megabonk
 PAUSE

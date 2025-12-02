@@ -5,6 +5,7 @@ In some controllers, the pad inputs are handled differently, and don't need id m
 It is possible to configure whether the program is activated on boot or not, as well as it is to map a button to toggle activation. When deactivated, it will just listen to an activation input.
 
 ## Swarm
+
 This game has custom config. See inside its folder.
 
     START -> ESCAPE
@@ -67,3 +68,7 @@ This game has custom config. See inside its folder.
     LEFT JOYSTICK -> move camera
     RIGHT JOYSTICK -> move mouse
     UP, DOWN, LEFT, RIGHT -> move the mouse to key spots in shop
+
+## Megabonk bunny hopper
+
+    R1 (hold) + RIGHT JOYSTICK (to the sides) -> W and move the camera slowly to the joystick direction to trigger air strafing
