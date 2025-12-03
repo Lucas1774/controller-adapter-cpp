@@ -7,9 +7,9 @@ namespace gameRegistry {
 void runMegabonk(const GameParams &params) {
     auto [buttonMapping, buttonState, running, resScalingX, resScalingY, joystick, leftJoystick, rightJoystick, triggers] = params;
 
-    const auto TURBO_INPUTS = std::unordered_set<Buttons>{R1};
-    const auto INPUT_TO_KEY_TAP = std::unordered_map<Buttons, std::function<int()>>{{R1, [] { return VK_SPACE; }}};
-    const auto INPUT_TO_KEY_HOLD = std::unordered_map<Buttons, std::function<int()>>{{R1, [] { return 'W'; }}};
+    const auto TURBO_INPUTS = std::unordered_set<Buttons>{L1};
+    const auto INPUT_TO_KEY_TAP = std::unordered_map<Buttons, std::function<int()>>{{L1, [] { return VK_SPACE; }}};
+    const auto INPUT_TO_KEY_HOLD = std::unordered_map<Buttons, std::function<int()>>{{R1, [] { return 'W'; }}, {L1, [] { return VK_SPACE; }}};
     const auto JOYSTICK_TO_MOUSE_RELATIVE = std::unordered_map<ButtonGroups, std::function<Joystick &()>>{
         {LEFT_JS, [&leftJoystick]() -> Joystick & { return leftJoystick; }}};
     const auto INPUT_TO_CONDITIONING_LOGIC = std::unordered_map<Buttons, std::function<bool()>>{

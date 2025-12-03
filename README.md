@@ -71,4 +71,5 @@ This game has custom config. See inside its folder.
 
 ## Megabonk bunny hopper
 
-    R1 (hold) + RIGHT JOYSTICK (to the sides) -> W and move the camera slowly to the joystick direction to trigger air strafing
+    L1 (hold) -> turbo space bar (jump)
+    R1 + RIGHT JOYSTICK (to the sides) -> W and move the camera slowly to the joystick direction to trigger air strafing if in the air

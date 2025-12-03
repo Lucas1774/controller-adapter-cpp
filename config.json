@@ -6,7 +6,7 @@
         "Y": 4,
         "L1": 5,
         "R1": 6,
-        "SELECT": 7,
+        "SELECT": 0,
         "START": 8,
         "L3": 9,
         "R3": 10,
@@ -17,7 +17,7 @@
         "DOWN": 0,
         "L2": 0,
         "R2": 0,
-        "ACTIVATE": 0
+        "ACTIVATE": 7
     },
     "run_automatically": true,
     "left_joystick_x_id": 0,
@@ -28,7 +28,7 @@
     "right_trigger_id": 5,
     "left_joystick_dead_zone": 0.9,
     "right_joystick_dead_zone": 0.2,
-    "left_joystick_sensitivity": 0.01,
+    "left_joystick_sensitivity": 0.02,
     "right_joystick_sensitivity": 0.5,
     "left_trigger_dead_zone": 0.05,
     "right_trigger_dead_zone": 0.05
