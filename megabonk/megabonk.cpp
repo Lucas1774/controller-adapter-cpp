@@ -1,5 +1,6 @@
 #include "funcs.h"
 #include "gameRegistry.h"
+#include <cmath>
 #include <windows.h>
 
 namespace gameRegistry {
@@ -7,23 +8,20 @@ namespace gameRegistry {
 void runMegabonk(const GameParams &params) {
     auto [buttonMapping, buttonState, running, resScalingX, resScalingY, joystick, leftJoystick, rightJoystick, triggers] = params;
 
-    const auto TURBO_INPUTS = std::unordered_set<Buttons>{L1};
-    const auto INPUT_TO_KEY_TAP = std::unordered_map<Buttons, std::function<int()>>{{L1, [] { return VK_SPACE; }}};
-    const auto INPUT_TO_KEY_HOLD = std::unordered_map<Buttons, std::function<int()>>{{R1, [] { return 'W'; }}, {L1, [] { return VK_SPACE; }}};
-    const auto JOYSTICK_TO_MOUSE_RELATIVE = std::unordered_map<ButtonGroups, std::function<Joystick &()>>{
-        {LEFT_JS, [&leftJoystick]() -> Joystick & { return leftJoystick; }}};
-    const auto INPUT_TO_CONDITIONING_LOGIC = std::unordered_map<Buttons, std::function<bool()>>{
-        {LEFT_JS_LEFT, [&buttonState]() { return PRESSED_STATES.contains(buttonState.at(R1)); }},
-        {LEFT_JS_RIGHT, [&buttonState]() { return PRESSED_STATES.contains(buttonState.at(R1)); }},
-        {LEFT_JS_UP, []() { return false; }},
-        {LEFT_JS_DOWN, []() { return false; }}};
+    const auto TURBO_INPUTS = std::unordered_set<Buttons>{R1, LEFT_JS_LEFT, LEFT_JS_RIGHT};
+    const auto INPUT_TO_KEY_TAP = std::unordered_map<Buttons, std::function<int()>>{{R1, [] { return VK_SPACE; }}};
+    const auto INPUT_TO_LOGIC_BEFORE = std::unordered_map<Buttons, std::function<void()>>{
+        {LEFT_JS_LEFT, [resScalingX, resScalingY, &leftJoystick]() { functions::action::moveMouseRelative(
+                                                                         static_cast<int>(round(leftJoystick.x * leftJoystick.x * leftJoystick.sensitivity * 100 * (leftJoystick.x / std::abs(leftJoystick.x)))),
+                                                                         0, resScalingX, resScalingY); }},
+        {LEFT_JS_RIGHT, [resScalingX, resScalingY, &leftJoystick]() { functions::action::moveMouseRelative(
+                                                                          static_cast<int>(round(leftJoystick.x * leftJoystick.x * leftJoystick.sensitivity * 100 * (leftJoystick.x / std::abs(leftJoystick.x)))),
+                                                                          0, resScalingX, resScalingY); }}};
 
     functions::Mappings mappings = {
         .buttonState = buttonState,
         .inputToKeyTap = INPUT_TO_KEY_TAP,
-        .inputToKeyHold = INPUT_TO_KEY_HOLD,
-        .joystickToMouseRelative = JOYSTICK_TO_MOUSE_RELATIVE,
-        .inputToConditioningLogic = INPUT_TO_CONDITIONING_LOGIC};
+        .inputToLogicBefore = INPUT_TO_LOGIC_BEFORE};
 
     functions::GameParams gameParams = {
         .buttonMapping = buttonMapping,
