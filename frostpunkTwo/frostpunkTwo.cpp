@@ -110,10 +110,10 @@ void runFrostpunkTwo(const GameParams &params) {
     functions::Mappings mappings = {
         .buttonState = buttonState,
         .inputToMouseMove = INPUT_TO_MOUSE_MOVE,
+        .joystickToMouseRelative = JOYSTICK_TO_MOUSE_RELATIVE,
         .inputToMouseClick = INPUT_TO_MOUSE_CLICK,
         .inputToKeyTap = INPUT_TO_KEY_TAP,
         .inputToKeyHold = INPUT_TO_KEY_HOLD,
-        .joystickToMouseRelative = JOYSTICK_TO_MOUSE_RELATIVE,
         .inputToLogicBefore = INPUT_TO_LOGIC_BEFORE,
         .inputToLogicAfter = INPUT_TO_LOGIC_AFTER,
         .releaseToLogicAfter = RELEASE_TO_LOGIC_AFTER};

@@ -1,9 +1,67 @@
 #include "funcs.h"
+#include <atomic>
 #include <cmath>
+#include <condition_variable>
 #include <iostream>
+#include <mutex>
+#include <queue>
 #include <stdexcept>
 #include <thread>
 #include <windows.h>
+
+namespace {
+
+class InputQueue {
+  private:
+    mutable std::queue<std::function<void()>> queue;
+    mutable std::mutex mutex;
+    mutable std::condition_variable cv;
+    mutable std::atomic<bool> running{true};
+    mutable std::jthread worker;
+
+    void workerThread() {
+        while (running) {
+            std::function<void()> task;
+            {
+                std::unique_lock lock(mutex);
+                cv.wait(lock, [this] { return !queue.empty() || !running; });
+                if (!running && queue.empty()) {
+                    break;
+                }
+                if (!queue.empty()) {
+                    task = std::move(queue.front());
+                    queue.pop();
+                }
+            }
+            if (task) {
+                task();
+            }
+        }
+    }
+
+  public:
+    InputQueue() : worker(&InputQueue::workerThread, this) {}
+
+    ~InputQueue() {
+        running = false;
+        cv.notify_one();
+    }
+
+    void enqueue(std::function<void()> task) const {
+        {
+            std::scoped_lock lock(mutex);
+            queue.push(std::move(task));
+        }
+        cv.notify_one();
+    }
+
+    InputQueue(const InputQueue &) = delete;
+    InputQueue &operator=(const InputQueue &) = delete;
+};
+
+inline const InputQueue inputQueue;
+
+} // namespace
 
 namespace functions {
 using enum Buttons;
@@ -64,11 +122,13 @@ const std::unordered_map<int, int> BUTTON_ID_TO_RELEASE_EVENT = {
     {SDL_BUTTON_MIDDLE, MOUSEEVENTF_MIDDLEUP}};
 
 void sendInput(const int key, const int flags) {
-    INPUT ip = {0};
-    ip.type = INPUT_KEYBOARD;
-    ip.ki.wScan = static_cast<WORD>(MapVirtualKey(key, MAPVK_VK_TO_VSC));
-    ip.ki.dwFlags = flags | KEYEVENTF_SCANCODE;
-    SendInput(1, &ip, sizeof(INPUT));
+    inputQueue.enqueue([key, flags] {
+        INPUT ip = {0};
+        ip.type = INPUT_KEYBOARD;
+        ip.ki.wScan = static_cast<WORD>(MapVirtualKey(key, MAPVK_VK_TO_VSC));
+        ip.ki.dwFlags = flags | KEYEVENTF_SCANCODE;
+        SendInput(1, &ip, sizeof(INPUT));
+    });
 }
 
 bool actionCallbackBefore(const std::unordered_map<Buttons, std::function<bool()>> &callbackMaps, const Buttons &input) {
@@ -83,22 +143,26 @@ bool actionIsTurbo(const std::unordered_map<Buttons, ButtonState> &buttonState, 
 }
 
 void pressButton(const int button_to_press) {
-    INPUT ip = {0};
-    ip.type = INPUT_MOUSE;
-    ip.mi.dwFlags = BUTTON_ID_TO_PRESS_EVENT.at(button_to_press);
-    SendInput(1, &ip, sizeof(INPUT));
+    inputQueue.enqueue([button_to_press] {
+        INPUT ip = {0};
+        ip.type = INPUT_MOUSE;
+        ip.mi.dwFlags = BUTTON_ID_TO_PRESS_EVENT.at(button_to_press);
+        SendInput(1, &ip, sizeof(INPUT));
+    });
 }
 
 void releaseButton(const int button_to_release) {
-    INPUT ip = {0};
-    ip.type = INPUT_MOUSE;
-    ip.mi.dwFlags = BUTTON_ID_TO_RELEASE_EVENT.at(button_to_release);
-    SendInput(1, &ip, sizeof(INPUT));
+    inputQueue.enqueue([button_to_release] {
+        INPUT ip = {0};
+        ip.type = INPUT_MOUSE;
+        ip.mi.dwFlags = BUTTON_ID_TO_RELEASE_EVENT.at(button_to_release);
+        SendInput(1, &ip, sizeof(INPUT));
+    });
 }
 
+// TODO: If keys don't register properly, may need to add a small delay
 void pressThenRelease(const int key_to_tap) {
     sendInput(key_to_tap, 0);
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
     sendInput(key_to_tap, KEYEVENTF_KEYUP);
 }
 
@@ -144,6 +208,20 @@ void runMappings(const Mappings &mappings, double resScalingX, double resScaling
             moveMouse(x, y, resScalingX, resScalingY);
         }
     }
+    for (const auto &[inputGroup, joystickSupplier] : mappings.joystickToMouseRelative) {
+        for (const auto &input : BUTTON_GROUP_TO_BUTTONS.at(inputGroup)) {
+            if (PRESSED_STATES.contains(buttonState.at(input))) {
+                if (actionCallbackBefore(callbacksMap, input)) {
+                    const auto &joystick = joystickSupplier();
+                    functions::action::moveMouseRelative(
+                        static_cast<int>(round(joystick.x * joystick.x * joystick.sensitivity * 100 * (joystick.x / std::abs(joystick.x)))),
+                        static_cast<int>(round(joystick.y * joystick.y * joystick.sensitivity * 100 * (joystick.y / std::abs(joystick.y)))),
+                        resScalingX, resScalingY);
+                }
+                break;
+            }
+        }
+    }
     for (const auto &[input, buttonSupplier] : mappings.inputToMouseClick) {
         if ((buttonState.at(input) == JUST_PRESSED || actionIsTurbo(buttonState, turboInputs, input)) && actionCallbackBefore(callbacksMap, input)) {
             click(buttonSupplier());
@@ -152,6 +230,11 @@ void runMappings(const Mappings &mappings, double resScalingX, double resScaling
     for (const auto &[input, buttonSupplier] : mappings.releaseToMouseClick) {
         if (buttonState.at(input) == JUST_RELEASED && actionCallbackBefore(callbacksMap, input)) {
             click(buttonSupplier());
+        }
+    }
+    for (const auto &[input, deltaSupplier] : mappings.inputToMouseScroll) {
+        if ((buttonState.at(input) == JUST_PRESSED || actionIsTurbo(buttonState, turboInputs, input)) && actionCallbackBefore(callbacksMap, input)) {
+            scrollMouseWheel(deltaSupplier());
         }
     }
     for (const auto &[input, buttonSupplier] : mappings.inputToButtonToggle) {
@@ -176,14 +259,12 @@ void runMappings(const Mappings &mappings, double resScalingX, double resScaling
     }
     for (const auto &[input, keySupplier] : mappings.inputToKeyTap) {
         if ((buttonState.at(input) == JUST_PRESSED || actionIsTurbo(buttonState, turboInputs, input)) && actionCallbackBefore(callbacksMap, input)) {
-            int key = keySupplier();
-            std::jthread([key] { pressThenRelease(key); }).detach();
+            pressThenRelease(keySupplier());
         }
     }
     for (const auto &[input, keySupplier] : mappings.releaseToKeyTap) {
         if (buttonState.at(input) == JUST_RELEASED && actionCallbackBefore(callbacksMap, input)) {
-            int key = keySupplier();
-            std::jthread([key] { pressThenRelease(key); }).detach();
+            pressThenRelease(keySupplier());
         }
     }
     for (const auto &[input, keySupplier] : mappings.inputToKeyHold) {
@@ -200,20 +281,6 @@ void runMappings(const Mappings &mappings, double resScalingX, double resScaling
         }
         if (actionCallbackBefore(callbacksMap, input)) {
             sendInput(keySupplier(), eventFlag);
-        }
-    }
-    for (const auto &[inputGroup, joystickSupplier] : mappings.joystickToMouseRelative) {
-        for (const auto &input : BUTTON_GROUP_TO_BUTTONS.at(inputGroup)) {
-            if (PRESSED_STATES.contains(buttonState.at(input))) {
-                if (actionCallbackBefore(callbacksMap, input)) {
-                    const auto &joystick = joystickSupplier();
-                    functions::action::moveMouseRelative(
-                        static_cast<int>(round(joystick.x * joystick.x * joystick.sensitivity * 100 * (joystick.x / std::abs(joystick.x)))),
-                        static_cast<int>(round(joystick.y * joystick.y * joystick.sensitivity * 100 * (joystick.y / std::abs(joystick.y)))),
-                        resScalingX, resScalingY);
-                }
-                break;
-            }
         }
     }
     for (const auto &[input, logic] : mappings.inputToLogicAfter) {
@@ -237,12 +304,24 @@ void moveMouseRelative(const int x, const int y, const double resScalingX, const
 }
 
 void click(const int button) {
-    std::array<INPUT, 2> ip = {0};
-    ip[0].type = INPUT_MOUSE;
-    ip[0].mi.dwFlags = BUTTON_ID_TO_PRESS_EVENT.at(button);
-    ip[1].type = INPUT_MOUSE;
-    ip[1].mi.dwFlags = BUTTON_ID_TO_RELEASE_EVENT.at(button);
-    SendInput(2, ip.data(), sizeof(INPUT));
+    inputQueue.enqueue([button] {
+        std::array<INPUT, 2> ip = {0};
+        ip[0].type = INPUT_MOUSE;
+        ip[0].mi.dwFlags = BUTTON_ID_TO_PRESS_EVENT.at(button);
+        ip[1].type = INPUT_MOUSE;
+        ip[1].mi.dwFlags = BUTTON_ID_TO_RELEASE_EVENT.at(button);
+        SendInput(2, ip.data(), sizeof(INPUT));
+    });
+}
+
+void scrollMouseWheel(const int delta) {
+    inputQueue.enqueue([delta] {
+        INPUT ip = {0};
+        ip.type = INPUT_MOUSE;
+        ip.mi.dwFlags = MOUSEEVENTF_WHEEL;
+        ip.mi.mouseData = static_cast<DWORD>(delta);
+        SendInput(1, &ip, sizeof(INPUT));
+    });
 }
 
 } // namespace action

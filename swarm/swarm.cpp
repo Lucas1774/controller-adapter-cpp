@@ -142,11 +142,11 @@ void runSwarm(const GameParams &params) {
     functions::Mappings mappings = {
         .buttonState = buttonState,
         .inputToMouseMove = INPUT_TO_MOUSE_MOVE,
+        .joystickToMouseRelative = JOYSTICK_TO_MOUSE_RELATIVE,
         .inputToMouseClick = INPUT_TO_MOUSE_CLICK,
         .inputToKeyTap = INPUT_TO_KEY_TAP,
         .releaseToKeyTap = RELEASE_TO_KEY_TAP,
         .inputToKeyHold = INPUT_TO_KEY_HOLD,
-        .joystickToMouseRelative = JOYSTICK_TO_MOUSE_RELATIVE,
         .inputToConditioningLogic = INPUT_TO_CONDITIONING_LOGIC,
         .inputToLogicBefore = INPUT_TO_LOGIC_BEFORE,
         .releaseToLogicBefore = RELEASE_TO_LOGIC_BEFORE,

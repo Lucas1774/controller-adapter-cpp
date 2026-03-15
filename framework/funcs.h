@@ -12,14 +12,15 @@ struct Mappings {
     std::unordered_map<Buttons, ButtonState> &buttonState;
     const std::unordered_map<Buttons, std::function<std::pair<int, int>()>> &inputToMouseMove = {};
     const std::unordered_map<Buttons, std::function<std::pair<int, int>()>> &releaseToMouseMove = {};
+    const std::unordered_map<ButtonGroups, std::function<Joystick &()>> &joystickToMouseRelative = {};
     const std::unordered_map<Buttons, std::function<int()>> &inputToMouseClick = {};
     const std::unordered_map<Buttons, std::function<int()>> &releaseToMouseClick = {};
     const std::unordered_map<Buttons, std::function<int()>> &inputToButtonToggle = {};
     const std::unordered_map<Buttons, std::function<int()>> &releaseToButtonToggle = {};
+    const std::unordered_map<Buttons, std::function<int()>> &inputToMouseScroll = {};
     const std::unordered_map<Buttons, std::function<int()>> &inputToKeyTap = {};
     const std::unordered_map<Buttons, std::function<int()>> &releaseToKeyTap = {};
     const std::unordered_map<Buttons, std::function<int()>> &inputToKeyHold = {};
-    const std::unordered_map<ButtonGroups, std::function<Joystick &()>> &joystickToMouseRelative = {};
     const std::unordered_map<Buttons, std::function<bool()>> &inputToConditioningLogic = {};
     const std::unordered_map<Buttons, std::function<void()>> &inputToLogicBefore = {};
     const std::unordered_map<Buttons, std::function<void()>> &releaseToLogicBefore = {};
@@ -71,6 +72,10 @@ void moveMouseRelative(const int x, const int y, const double resScalingX, const
 /// @brief sends a simple click.
 /// @param button mouse button to click.
 void click(const int button);
+
+/// @brief scrolls the mouse wheel.
+/// @param delta positive scrolls up, negative scrolls down.
+void scrollMouseWheel(const int delta);
 
 } // namespace action
 
