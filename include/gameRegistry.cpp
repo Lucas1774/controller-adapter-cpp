@@ -10,7 +10,8 @@ void runGame(const std::string &name, const GameParams &params) {
             {"tft", runTft},
             {"frostpunkTwo", runFrostpunkTwo},
             {"chess", runChess},
-            {"megabonk", runMegabonk}};
+            {"megabonk", runMegabonk},
+            {"slayTheSpire", runSlayTheSpire}};
 
     auto it = gameToRunner.find(name);
     if (it != gameToRunner.end()) {

@@ -27,6 +27,7 @@ void runSwarm(const GameParams &params);
 void runChess(const GameParams &params);
 void runTft(const GameParams &params);
 void runMegabonk(const GameParams &params);
+void runSlayTheSpire(const GameParams &params);
 
 } // namespace gameRegistry
 

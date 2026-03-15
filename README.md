@@ -73,3 +73,8 @@ This game has custom config. See inside its folder.
 
     L1 (hold) -> turbo space bar (jump)
     R1 + RIGHT JOYSTICK (to the sides) -> W and move the camera slowly to the joystick direction to trigger air strafing if in the air
+
+## Slay the spire
+
+    R3 -> view upgrades
+    RIGHT JOYSTICK (hold) -> scroll (turbo)
