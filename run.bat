@@ -1,2 +1,2 @@
-.\mapper.exe megabonk
+.\mapper.exe slayTheSpire
 PAUSE

@@ -11,6 +11,7 @@ start "" /B cmd /C "g++ -c -std=c++20 -fdiagnostics-color=always -g -Ijsoncpp-1.
 start "" /B cmd /C "g++ -c -std=c++20 -fdiagnostics-color=always -g -Ijsoncpp-1.9.5/include -ISDL2-2.30.6/include -Iframework -Iinclude chess/chess.cpp -o build/chess.o"
 start "" /B cmd /C "g++ -c -std=c++20 -fdiagnostics-color=always -g -Ijsoncpp-1.9.5/include -ISDL2-2.30.6/include -Iframework -Iinclude frostpunkTwo/frostpunkTwo.cpp -o build/frostpunkTwo.o"
 start "" /B cmd /C "g++ -c -std=c++20 -fdiagnostics-color=always -g -Ijsoncpp-1.9.5/include -ISDL2-2.30.6/include -Iframework -Iinclude megabonk/megabonk.cpp -o build/megabonk.o"
+start "" /B cmd /C "g++ -c -std=c++20 -fdiagnostics-color=always -g -Ijsoncpp-1.9.5/include -ISDL2-2.30.6/include -Iframework -Iinclude slayTheSpire/slayTheSpire.cpp -o build/slayTheSpire.o"
 start "" /B cmd /C "g++ -c -std=c++20 -fdiagnostics-color=always -g -Ijsoncpp-1.9.5/include -ISDL2-2.30.6/include -Iframework -Iinclude main.cpp -o build/main.o"
 
 echo Waiting for compilation to finish...
@@ -22,6 +23,6 @@ if %ERRORLEVEL%==0 (
 )
 
 echo Linking...
-g++ -std=c++20 -fdiagnostics-color=always -g build/funcs.o build/configParser.o build/gameRegistry.o build/swarm.o build/tft.o build/chess.o build/frostpunkTwo.o build/megabonk.o build/main.o -o mapper.exe -Ljsoncpp-1.9.5/lib -LSDL2-2.30.6/lib -ljsoncpp -lSDL2main -lSDL2
+g++ -std=c++20 -fdiagnostics-color=always -g build/funcs.o build/configParser.o build/gameRegistry.o build/swarm.o build/tft.o build/chess.o build/frostpunkTwo.o build/megabonk.o build/slayTheSpire.o build/main.o -o mapper.exe -Ljsoncpp-1.9.5/lib -LSDL2-2.30.6/lib -ljsoncpp -lSDL2main -lSDL2
 
 echo Build complete.
