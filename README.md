@@ -4,6 +4,10 @@ Edit the .bat file to change game. Double-click it to run the program.  Use Wind
 In some controllers, the pad inputs are handled differently, and don't need id mapping. In others, they are regular buttons. The program will correctly handle either. Back triggers are similar in this aspect, and can be either buttons or analog axis.
 It is possible to configure whether the program is activated on boot or not, as well as it is to map a button to toggle activation. When deactivated, it will just listen to an activation input.
 
+## One button mapper
+
+Simple mapper not indended for a single game but to a small meta action
+
 ## Swarm
 
 This game has custom config. See inside its folder.

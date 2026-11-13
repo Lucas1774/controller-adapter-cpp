@@ -11,7 +11,8 @@ void runGame(const std::string &name, const GameParams &params) {
             {"frostpunkTwo", runFrostpunkTwo},
             {"chess", runChess},
             {"megabonk", runMegabonk},
-            {"slayTheSpire", runSlayTheSpire}};
+            {"slayTheSpire", runSlayTheSpire},
+            {"oneButtonMapper", runOneButtonMapper}};
 
     auto it = gameToRunner.find(name);
     if (it != gameToRunner.end()) {

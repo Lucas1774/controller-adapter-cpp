@@ -1,2 +1,2 @@
-.\mapper.exe slayTheSpire
+.\mapper.exe oneButtonMapper
 PAUSE

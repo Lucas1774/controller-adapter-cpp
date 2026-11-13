@@ -28,6 +28,7 @@ void runChess(const GameParams &params);
 void runTft(const GameParams &params);
 void runMegabonk(const GameParams &params);
 void runSlayTheSpire(const GameParams &params);
+void runOneButtonMapper(const GameParams &params);
 
 } // namespace gameRegistry
 
