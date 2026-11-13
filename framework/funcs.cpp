@@ -78,22 +78,23 @@ void run(const GameParams &gameParams) {
             while (SDL_PollEvent(&eventBuffer)) {
                 events.push_back(eventBuffer);
             }
-            if (!running) {
-                for (const auto &event : events) {
-                    if (event.type == SDL_JOYBUTTONDOWN) {
-                        const Buttons button = buttonMapping.at(event.jbutton.button);
-                        if (button == ACTIVATE) {
-                            running = true;
-                            break;
-                        }
-                    }
+
+            if (joystick && !SDL_JoystickGetAttached(joystick)) {
+                SDL_JoystickClose(joystick);
+                joystick = nullptr;
+            }
+            if (!joystick) {
+                if (SDL_NumJoysticks() > 0) {
+                    joystick = SDL_JoystickOpen(0);
                 }
-            } else {
-                functions::state::updateNonAnalogState(buttonState, events, buttonMapping);
-                if (buttonState[ACTIVATE] == JUST_PRESSED) {
-                    running = false;
-                    continue;
-                }
+                continue;
+            }
+
+            functions::state::updateNonAnalogState(buttonState, events, buttonMapping);
+            if (buttonState.at(ACTIVATE) == JUST_PRESSED) {
+                running = !running;
+            }
+            if (running) {
                 functions::state::updateJoystick(buttonState, joystick, leftJoystick, LEFT_JS);
                 functions::state::updateJoystick(buttonState, joystick, rightJoystick, RIGHT_JS);
                 if (triggers) {
@@ -168,11 +169,11 @@ void pressThenRelease(const int key_to_tap) {
 
 void handleState(ButtonState &state, const bool is_pressed) {
     if (is_pressed) {
-        if (state == RELEASED) {
+        if (state == RELEASED || state == JUST_RELEASED) {
             state = JUST_PRESSED;
         }
     } else {
-        if (state == PRESSED) {
+        if (state == PRESSED || state == JUST_PRESSED) {
             state = JUST_RELEASED;
         }
     }

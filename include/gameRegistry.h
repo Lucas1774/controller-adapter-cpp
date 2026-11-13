@@ -15,7 +15,7 @@ struct GameParams {
     bool running;
     const double resScalingX;
     const double resScalingY;
-    SDL_Joystick *joystick;
+    SDL_Joystick *&joystick;
     Joystick &leftJoystick;
     Joystick &rightJoystick;
     Joystick *triggers;

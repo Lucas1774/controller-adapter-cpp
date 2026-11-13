@@ -31,7 +31,7 @@ struct Mappings {
 struct GameParams {
     const std::unordered_map<Uint8, Buttons> &buttonMapping;
     std::unordered_map<Buttons, ButtonState> &buttonState;
-    SDL_Joystick *joystick;
+    SDL_Joystick *&joystick;
     Joystick &leftJoystick;
     Joystick &rightJoystick;
     Joystick *triggers;
